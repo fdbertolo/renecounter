@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contador de René</title>
+</head>
+<body>
+  <div id="welcomeScreen">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/7/73/Frans_Hals_-_Portret_van_Ren%C3%A9_Descartes.jpg" alt="René Descartes">
+    <div class="welcome-info">
+      <h1>Bienvenidos al contador de René</h1>
+      <button onclick="continueFromWelcome()">Continuar</button>
+    </div>
+  </div>
+
+  <div id="playersModal" class="modal">
+    <div class="modal-content">
+      <h2>Jugadores:</h2>
+      <div id="playerButtons">
+        <button onclick="selectPlayer('Fer')">Fer</button>
+        <button onclick="selectPlayer('Ari')">Ari</button>
+        <button onclick="selectPlayer('Laro')">Laro</button>
+        <button onclick="selectPlayer('Juryk')">Juryk</button>
+        <button onclick="selectPlayer('Lina')">Lina</button>
+        <button onclick="selectPlayer('Fede')">Fede</button>
+        <button onclick="selectPlayer('Alitan')">Alitan</button>
+        <button onclick="showCustomPlayerInput()">Otro</button>
+      </div>
+      <div id="customPlayerInput" class="hidden">
+        <input type="text" id="customPlayerName" placeholder="Nombre del jugador">
+        <button onclick="addCustomPlayer()">Agregar</button>
+      </div>
+      <h3>Jugadores seleccionados:</h3>
+      <div id="selectedPlayers"></div>
+      <button onclick="confirmPlayers()">Confirmar</button>
+    </div>
+  </div>
+
+  <div id="roundsModal" class="modal">
+    <div class="modal-content">
+      <h2>¿A cuánto se va a jugar?</h2>
+      <button onclick="selectRounds(5)">5</button>
+      <button onclick="selectRounds(6)">6</button>
+      <button onclick="selectRounds(7)">7</button>
+      <button onclick="selectRounds(8)">8</button>
+    </div>
+  </div>
+
+  <div id="mainTableContainer" class="hidden">
+    <table>
+      <thead>
+        <tr id="playersHeader"></tr>
+      </thead>
+      <tbody id="gameRounds"></tbody>
+    </table>
+    <button id="correctButton" class="hidden" onclick="showCorrectionModal()">Corregir</button>
+  </div>
+
+  <div id="bettingModal" class="modal">
+    <div class="modal-content" id="bettingContent">
+      <!-- Contenido dinámico -->
+    </div>
+  </div>
+
+  <div id="resultsModal" class="modal">
+    <div class="modal-content" id="resultsContent">
+      <!-- Contenido dinámico -->
+    </div>
+  </div>
+
+  <div id="correctionModal" class="modal">
+    <div class="modal-content">
+      <h2>Corregir Puntaje</h2>
+      <select id="playerSelect">
+        <!-- Opciones generadas dinámicamente -->
+      </select>
+      <input type="number" id="correctionPoints" placeholder="Puntos">
+      <button onclick="applyCorrection()">Aplicar</button>
+      <button onclick="closeCorrectionModal()">Cerrar</button>
+    </div>
+  </div>
+
+  <div id="podiumModal" class="modal">
+    <div class="modal-content">
+      <h2>Podio</h2>
+      <div id="podiumContent">
+        <!-- Contenido del podio dinámico -->
+      </div>
+      <button onclick="closePodiumModal()">Cerrar</button>
+    </div>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+</html>
