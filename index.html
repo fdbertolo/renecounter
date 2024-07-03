@@ -1,5 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="description" content="Contador de puntajes para el juego René">
@@ -11,12 +9,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
 </head>
+
 <body class="dark-mode">
   <div id="welcomeScreen">
     <img src="https://upload.wikimedia.org/wikipedia/commons/7/73/Frans_Hals_-_Portret_van_Ren%C3%A9_Descartes.jpg" alt="René Descartes">
     <div class="welcome-info">
       <h1>Bienvenidos al<br><b>Contador de René</b></h1>
-      <button onclick="continueFromWelcome()">Continuar</button>
+      <button class="large" onclick="continueFromWelcome()">Continuar</button>
     </div>
   </div>
 
@@ -60,7 +59,7 @@
       </thead>
       <tbody id="gameRounds"></tbody>
     </table>
-    <button id="correctButton" class="hidden" onclick="showCorrectionModal()">Corregir</button>
+    <button id="correctButton" class="hidden large" onclick="showCorrectionModal()">Corregir</button>
   </div>
 
   <div id="bettingModal" class="modal">
@@ -81,7 +80,7 @@
       <select id="correctionPlayerSelect">
         <!-- Opciones generadas dinámicamente -->
       </select>
-      <input type="number" id="correctionPoints" placeholder="Puntos">
+      <input id="correctionPoints" placeholder="Puntos">
       <button onclick="applyCorrection()">Aplicar</button>
       <button onclick="closeCorrectionModal()">Cerrar</button>
     </div>
@@ -99,4 +98,3 @@
 
   <script src="index.js"></script>
 </body>
-</html>
