@@ -53,7 +53,8 @@ function continueFromWelcome() {
 }
 
 function showPlayersModal() {
-  document.getElementById("playersModal").style.display = "block";
+  document.getElementById("playersModal").style.display = "flex";
+  document.getElementById("playersModal").style.alignItems = "center";
 }
 
 function selectPlayer(player) {
@@ -182,8 +183,14 @@ function showBettingModal(dealerIndex) {
 
   // Función para mostrar la pregunta de apuesta para el jugador actual
   const askForBet = () => {
-    bettingContent.innerHTML = `<p><b class="player">${players[startingIndex]}</b><br><br>¿Cuántas cartas querés apostar en la ronda ${currentRound}?
-    ${currentRoundBets.length ? `<br><br>Apostados hasta el momento: ${currentRoundBets}</p>` : ''}`;
+    bettingContent.innerHTML = `<p><b class="player">${
+      players[startingIndex]
+    }</b><br><br>¿Cuántas cartas querés apostar en la ronda ${currentRound}?
+    ${
+      currentRoundBets.length
+        ? `<br><br>Apostados hasta el momento: ${currentRoundBets}</p>`
+        : ""
+    }`;
     for (let i = 0; i <= effectiveRound; i++) {
       const betButton = document.createElement("button");
       betButton.innerText = i;
