@@ -65,6 +65,7 @@ td {
 
 th {
   background-color: #464646;
+  font-size: 20px;
 }
 
 
@@ -96,7 +97,6 @@ img {
 }
 
 button {
-  border-radius: 6px;
   background: #1e1e1e;
   border: 2px solid #4a4a4a;
   color: #f8f8f8;
@@ -118,6 +118,8 @@ select, button {
   min-width: 52px;
   background: #121212;
   color: #f8f8f8;
+  border: 2px solid #4a4a4a;
+  border-radius: 6px;
 }
 
 #podiumContent {
