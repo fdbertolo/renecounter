@@ -16,7 +16,9 @@ body {
   margin: 0;
 }
 
-b {font-weight: 700;}
+b {
+  font-weight: 700;
+}
 
 .modal {
   display: none;
@@ -42,7 +44,7 @@ b {font-weight: 700;}
   padding: 20px;
   border: 1px solid #888;
   border-radius: 10px;
-  width: 85%;
+  width: 90dvw;
 }
 
 .hidden {
@@ -67,7 +69,6 @@ th {
   background-color: #464646;
   font-size: 20px;
 }
-
 
 img {
   min-height: 100dvh;
@@ -113,7 +114,8 @@ button:disabled {
 }
 
 input,
-select, button {
+select,
+button {
   height: 52px;
   min-width: 52px;
   background: #121212;
@@ -131,4 +133,11 @@ select, button {
 
 .player {
   font-size: 24px;
+}
+
+td button {
+  width: -webkit-fill-available;
+  height: auto;
+  margin: auto;
+  padding: inherit;
 }
