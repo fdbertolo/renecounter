@@ -182,7 +182,8 @@ function showBettingModal(dealerIndex) {
 
   // Función para mostrar la pregunta de apuesta para el jugador actual
   const askForBet = () => {
-    bettingContent.innerHTML = `<p><b>${players[startingIndex]}</b>, ¿cuántas cartas quieres apostar en la ronda ${currentRound}?</p>`;
+    bettingContent.innerHTML = `<p><b class="player">${players[startingIndex]}</b><br><br>¿Cuántas cartas querés apostar en la ronda ${currentRound}?
+    ${currentRoundBets.length ? `<br><br>Apostados hasta el momento: ${currentRoundBets}</p>` : ''}`;
     for (let i = 0; i <= effectiveRound; i++) {
       const betButton = document.createElement("button");
       betButton.innerText = i;
@@ -242,7 +243,7 @@ function askForRoundResults() {
   resultsContent.innerHTML = `<p>¿Quién perdió y por cuánto en la ronda ${currentRound}?</p>`;
   players.forEach((player, index) => {
     const playerResultDiv = document.createElement("div");
-    playerResultDiv.innerHTML = `<p>${player}</p>`;
+    playerResultDiv.innerHTML = `<p><b class="player">${player}</b></p>`;
     for (let i = -effectiveRound; i <= 0; i++) {
       const resultButton = document.createElement("button");
       resultButton.innerText = i === 0 ? "Ganó" : i;
