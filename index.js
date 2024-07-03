@@ -107,7 +107,8 @@ function confirmPlayers() {
 }
 
 function showRoundsModal() {
-  document.getElementById("roundsModal").style.display = "block";
+  document.getElementById("roundsModal").style.display = "flex";
+  document.getElementById("roundsModal").style.alignItems = "center";
 }
 
 function selectRounds(selectedRounds) {
@@ -125,12 +126,15 @@ function generateGameTable() {
   playersHeader.innerHTML = "";
   gameRounds.innerHTML = "";
 
+  // Agregar encabezado para cada jugador
   players.forEach((player) => {
     const th = document.createElement("th");
+    th.colSpan = 2; // Cada jugador tendrá dos columnas (apuestas y resultados)
     th.innerText = player;
     playersHeader.appendChild(th);
   });
 
+  // Crear las filas de rondas
   tableRows = [];
   const totalRounds = rounds * 2;
   for (let i = 1; i <= totalRounds; i++) {
@@ -155,13 +159,52 @@ function addRoundRow(roundNumber) {
   lastDealerIndex = dealerIndex;
 
   players.forEach((player, playerIndex) => {
-    const td = document.createElement("td");
+    // Celda de apuestas
+    const betsTd = document.createElement("td");
+    betsTd.classList.add("bets-cell");
+    row.push(betsTd);
+    tr.appendChild(betsTd);
+
+    // Celda de resultados
+    const resultsTd = document.createElement("td");
     if (playerIndex === dealerIndex) {
-      td.innerHTML = `<button onclick="startBetting(${roundNumber}, ${dealerIndex})">Dar</button>`;
+      resultsTd.innerHTML = `<button onclick="startBetting(${roundNumber}, ${dealerIndex})">Dar</button>`;
     }
-    tr.appendChild(td);
-    row.push(td);
+    row.push(resultsTd);
+    tr.appendChild(resultsTd);
   });
+
+  tableRows.push(row);
+  document.getElementById("gameRounds").appendChild(tr);
+}
+
+function addRoundRow(roundNumber) {
+  const tr = document.createElement("tr");
+  const row = [];
+
+  // Identificar al jugador que reparte en esta ronda
+  let dealerIndex = (roundNumber - 1) % players.length;
+  while (dealerIndex === lastDealerIndex) {
+    dealerIndex = Math.floor(Math.random() * players.length);
+  }
+  lastDealerIndex = dealerIndex;
+
+  players.forEach((player, playerIndex) => {
+    // Celda de apuestas
+    const betsTd = document.createElement("td");
+    betsTd.classList.add("bets-cell");
+    row.push(betsTd);
+    tr.appendChild(betsTd);
+
+    // Celda de resultados
+    const resultsTd = document.createElement("td");
+    if (playerIndex === dealerIndex) {
+      resultsTd.innerHTML = `<button onclick="startBetting(${roundNumber}, ${dealerIndex})">Dar</button>`;
+    }
+    row.push(resultsTd);
+    tr.appendChild(resultsTd);
+  });
+
   tableRows.push(row);
   document.getElementById("gameRounds").appendChild(tr);
 }
@@ -211,7 +254,8 @@ function showBettingModal(dealerIndex) {
     askForBet();
   };
 
-  bettingModal.style.display = "block";
+  bettingModal.style.display = "flex";
+  bettingModal.style.alignItems = "center";
 
   // Llamar a nextPlayer después de confirmar la apuesta del jugador actual
   const confirmBet = (bet, dealerIndex) => {
@@ -220,7 +264,7 @@ function showBettingModal(dealerIndex) {
     if (currentBettorIndex === players.length - 1) {
       const totalBets = currentRoundBets.reduce((a, b) => a + b, 0);
       if (totalBets === currentRound) {
-        alert(`No se puede apostar: ${bet}. Debe desempatar.`);
+        alert(`No se puede apostar: ${bet}. Tiene que aprenderse las reglas.`);
         currentRoundBets.pop();
         return;
       }
@@ -248,6 +292,7 @@ function askForRoundResults() {
   const effectiveRound = ((currentRound - 1) % rounds) + 1; // Ajustar la ronda efectiva
 
   resultsContent.innerHTML = `<p>¿Quién perdió y por cuánto en la ronda ${currentRound}?</p>`;
+
   players.forEach((player, index) => {
     const playerResultDiv = document.createElement("div");
     playerResultDiv.innerHTML = `<p><b class="player">${player}</b></p>`;
@@ -260,7 +305,8 @@ function askForRoundResults() {
     resultsContent.appendChild(playerResultDiv);
   });
 
-  resultsModal.style.display = "block";
+  resultsModal.style.display = "flex";
+  resultsModal.style.alignItems = "center";
 }
 
 function confirmResult(player, result, event) {
@@ -269,14 +315,39 @@ function confirmResult(player, result, event) {
 
   // Deshabilitar los botones después de la selección
   const playerResultDiv = event.target.parentElement;
-  Array.from(playerResultDiv.children).forEach(
-    (button) => (button.disabled = true)
-  );
+  const buttons = Array.from(playerResultDiv.children);
+
+  buttons.forEach((button) => {
+    button.disabled = true;
+  });
 
   // Verificar si todos los resultados están ingresados
   if (currentRoundResults.every((r) => r !== null)) {
+    // Verificar si todos los jugadores han seleccionado "Ganó"
+    const allWinners = currentRoundResults.every((r) => r === 0);
+    if (allWinners) {
+      alert(
+        "Todos los jugadores pusieron que ganaron. No se hagan los boludos que alguno tuvo que perder."
+      );
+      // Reiniciar los botones para que los jugadores puedan elegir de nuevo
+      buttons.forEach((button) => {
+        button.disabled = false;
+      });
+      return; // Evitar cerrar el modal si todos han seleccionado "Ganó"
+    }
+
     updateTableWithResults();
     closeResultsModal();
+  } else {
+    // Verificar si se han seleccionado solo "Ganó"
+    const onlyWinners = currentRoundResults.every((r) => r === 0);
+    if (onlyWinners) {
+      alert("Debe seleccionar al menos un jugador como perdedor.");
+      // Reiniciar los botones para que los jugadores puedan elegir de nuevo
+      buttons.forEach((button) => {
+        button.disabled = false;
+      });
+    }
   }
 }
 
@@ -286,15 +357,27 @@ function closeResultsModal() {
 
 function updateTableWithResults() {
   const roundRowIndex = currentRound - 1;
-  tableRows[roundRowIndex].forEach((cell, index) => {
-    const result = currentRoundResults[index];
+  const row = tableRows[roundRowIndex];
 
+  players.forEach((player, index) => {
+    const betCellIndex = index * 2;
+    const resultCellIndex = betCellIndex + 1;
+
+    // Actualizar celda de apuestas
+    row[betCellIndex].innerText = currentRoundBets[index];
+
+    // Actualizar celda de resultados
+    const result = currentRoundResults[index];
     if (result === 0) {
-      cell.innerHTML = `<span>${10 + currentRoundBets[index]}</span>`;
-      playerPoints[players[index]] += 10 + currentRoundBets[index];
+      row[resultCellIndex].innerHTML = `<span>${
+        10 + currentRoundBets[index]
+      }</span>`;
+      playerPoints[player] += 10 + currentRoundBets[index];
     } else {
-      cell.innerHTML = `<span>${result}</span>`;
-      playerPoints[players[index]] += result;
+      row[resultCellIndex].innerHTML = `<span class="${
+        result < 0 ? "negative" : ""
+      }">${result}</span>`;
+      playerPoints[player] += result;
     }
   });
 
@@ -326,7 +409,8 @@ function showPodium() {
     podiumContent.appendChild(playerDiv);
   });
 
-  podiumModal.style.display = "block";
+  podiumModal.style.display = "flex";
+  podiumModal.style.alignItems = "center";
 }
 
 function closePodiumModal() {
@@ -340,6 +424,7 @@ function updateTableHeader() {
   players.forEach((player) => {
     const th = document.createElement("th");
     th.innerText = `${player} (${playerPoints[player]})`;
+    th.colSpan = 2;
     playersHeader.appendChild(th);
   });
 }
@@ -357,7 +442,8 @@ function showCorrectionModal() {
     correctionPlayerSelect.appendChild(option);
   });
 
-  document.getElementById("correctionModal").style.display = "block";
+  document.getElementById("correctionModal").style.display = "flex";
+  document.getElementById("correctionModal").style.alignItems = "center";
 }
 
 function closeCorrectionModal() {
