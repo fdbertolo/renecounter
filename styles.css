@@ -141,3 +141,17 @@ td button {
   margin: auto;
   padding: inherit;
 }
+
+button.large {
+  width: 280px;
+}
+
+.negative {
+  color: #ff6441;
+  font-weight: 700;
+}
+
+.bets-cell {
+  width: 30px; /* Ajusta este valor según sea necesario */
+  text-align: center;
+}
