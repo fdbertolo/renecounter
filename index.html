@@ -23,13 +23,13 @@
     <div class="modal-content">
       <h2>Jugadores:</h2>
       <div id="playerButtons">
-        <button onclick="selectPlayer('Fer')">Fer</button>
-        <button onclick="selectPlayer('Ari')">Ari</button>
-        <button onclick="selectPlayer('Laro')">Laro</button>
-        <button onclick="selectPlayer('Juryk')">Juryk</button>
-        <button onclick="selectPlayer('Lina')">Lina</button>
-        <button onclick="selectPlayer('Fede')">Fede</button>
-        <button onclick="selectPlayer('Alitan')">Alitan</button>
+        <button onclick="selectPlayer('Fer'); disabled = true;">Fer</button>
+        <button onclick="selectPlayer('Ari'); disabled = true;">Ari</button>
+        <button onclick="selectPlayer('Laro'); disabled = true;">Laro</button>
+        <button onclick="selectPlayer('Juryk'); disabled = true;">Juryk</button>
+        <button onclick="selectPlayer('Lina'); disabled = true;">Lina</button>
+        <button onclick="selectPlayer('Fede'); disabled = true;">Fede</button>
+        <button onclick="selectPlayer('Alitan'); disabled = true;">Alitan</button>
         <button onclick="showCustomPlayerInput()">Otro</button>
       </div>
       <div id="customPlayerInput" class="hidden">
@@ -59,8 +59,8 @@
       </thead>
       <tbody id="gameRounds"></tbody>
     </table>
-    <button id="correctButton" class="hidden large" onclick="showCorrectionModal()">Corregir</button>
   </div>
+  <button id="correctButton" class="hidden" onclick="showCorrectionModal()">Corregir</button>
 
   <div id="bettingModal" class="modal">
     <div class="modal-content" id="bettingContent">
