@@ -7,7 +7,7 @@ html {
 * {
   box-sizing: border-box;
   font-family: "Manrope", sans-serif;
-  font-weight: 400;
+  font-weight: 400;z
   font-optical-sizing: auto;
 }
 
@@ -61,13 +61,13 @@ table {
 th,
 td {
   border: 1px solid #848484;
-  padding: 8px;
   text-align: center;
+  padding: 0;
 }
 
 th {
   background-color: #464646;
-  font-size: 20px;
+  font-size: 18px;
 }
 
 img {
@@ -119,9 +119,9 @@ button {
   height: 52px;
   min-width: 52px;
   background: #121212;
-  color: #f8f8f8;
-  border: 2px solid #4a4a4a;
   border-radius: 6px;
+  border: 1px solid #464646;
+  color: #f8f8f8;
 }
 
 #podiumContent {
@@ -144,6 +144,18 @@ td button {
 
 button.large {
   width: 280px;
+  background: #121212;
+  border-radius: 6px;
+  border: 2px solid #464646;
+}
+
+button.short {
+  background: #6c668599;
+  border-radius: 0;
+  border: 2px solid #6c6685;
+  display: grid;
+  font-size: 12px;
+  padding: 4px 0;
 }
 
 .negative {
@@ -152,6 +164,6 @@ button.large {
 }
 
 .bets-cell {
-  width: 30px; /* Ajusta este valor según sea necesario */
+  width: 30px;
   text-align: center;
 }
