@@ -112,6 +112,14 @@ function showRoundsModal() {
 }
 
 function selectRounds(selectedRounds) {
+  const maxRounds = Math.floor(40 / players.length);
+  if (selectedRounds > maxRounds) {
+    alert(
+      `Con ${players.length} jugadores, solo puedes jugar un máximo de ${maxRounds} rondas.`
+    );
+    return;
+  }
+
   rounds = selectedRounds;
   localStorage.setItem("rounds", rounds);
   document.getElementById("roundsModal").style.display = "none";
@@ -124,7 +132,11 @@ function generateGameTable() {
   const gameRounds = document.getElementById("gameRounds");
 
   playersHeader.innerHTML = "";
-  gameRounds.innerHTML = "";
+
+  // Agregar encabezado para la columna de números de ronda
+  const thRounds = document.createElement("th");
+  thRounds.innerText = "";
+  playersHeader.appendChild(thRounds);
 
   // Agregar encabezado para cada jugador
   players.forEach((player) => {
@@ -151,11 +163,19 @@ function addRoundRow(roundNumber) {
   const tr = document.createElement("tr");
   const row = [];
 
+  // Celda de número de ronda
+  const roundTd = document.createElement("td");
+  roundTd.innerText = ((roundNumber - 1) % rounds) + 1;
+  tr.appendChild(roundTd);
+
   // Identificar al jugador que reparte en esta ronda
   let dealerIndex = (roundNumber - 1) % players.length;
-  while (dealerIndex === lastDealerIndex) {
-    dealerIndex = Math.floor(Math.random() * players.length);
+
+  // Verificar si el jugador reparte dos veces la misma cantidad de cartas
+  if (hasRepeatedDealer() === dealerIndex) {
+    dealerIndex = reassignDealer(roundNumber);
   }
+
   lastDealerIndex = dealerIndex;
 
   players.forEach((player, playerIndex) => {
@@ -168,38 +188,7 @@ function addRoundRow(roundNumber) {
     // Celda de resultados
     const resultsTd = document.createElement("td");
     if (playerIndex === dealerIndex) {
-      resultsTd.innerHTML = `<button onclick="startBetting(${roundNumber}, ${dealerIndex})">Dar</button>`;
-    }
-    row.push(resultsTd);
-    tr.appendChild(resultsTd);
-  });
-
-  tableRows.push(row);
-  document.getElementById("gameRounds").appendChild(tr);
-}
-
-function addRoundRow(roundNumber) {
-  const tr = document.createElement("tr");
-  const row = [];
-
-  // Identificar al jugador que reparte en esta ronda
-  let dealerIndex = (roundNumber - 1) % players.length;
-  while (dealerIndex === lastDealerIndex) {
-    dealerIndex = Math.floor(Math.random() * players.length);
-  }
-  lastDealerIndex = dealerIndex;
-
-  players.forEach((player, playerIndex) => {
-    // Celda de apuestas
-    const betsTd = document.createElement("td");
-    betsTd.classList.add("bets-cell");
-    row.push(betsTd);
-    tr.appendChild(betsTd);
-
-    // Celda de resultados
-    const resultsTd = document.createElement("td");
-    if (playerIndex === dealerIndex) {
-      resultsTd.innerHTML = `<button onclick="startBetting(${roundNumber}, ${dealerIndex})">Dar</button>`;
+      resultsTd.innerHTML = `<button class="short" onclick="startBetting(${roundNumber}, ${dealerIndex})">Dar</button>`;
     }
     row.push(resultsTd);
     tr.appendChild(resultsTd);
@@ -338,16 +327,6 @@ function confirmResult(player, result, event) {
 
     updateTableWithResults();
     closeResultsModal();
-  } else {
-    // Verificar si se han seleccionado solo "Ganó"
-    const onlyWinners = currentRoundResults.every((r) => r === 0);
-    if (onlyWinners) {
-      alert("Debe seleccionar al menos un jugador como perdedor.");
-      // Reiniciar los botones para que los jugadores puedan elegir de nuevo
-      buttons.forEach((button) => {
-        button.disabled = false;
-      });
-    }
   }
 }
 
@@ -382,12 +361,21 @@ function updateTableWithResults() {
   });
 
   updateTableHeader();
+  updateRoundNumbers(); // Asegurar que los números de ronda se actualicen
 
   // Verificar si todas las rondas han sido completadas
   const totalRounds = rounds * 2;
   if (currentRound === totalRounds) {
     showPodium();
   }
+}
+
+function updateRoundNumbers() {
+  const tableRows = document.querySelectorAll("#gameRounds tr");
+  tableRows.forEach((tr, index) => {
+    const effectiveRoundNumber = (index % rounds) + 1;
+    tr.querySelector("td").innerText = effectiveRoundNumber;
+  });
 }
 
 function showPodium() {
@@ -420,6 +408,10 @@ function closePodiumModal() {
 function updateTableHeader() {
   const playersHeader = document.getElementById("playersHeader");
   playersHeader.innerHTML = "";
+
+  const thRounds = document.createElement("th");
+  thRounds.innerText = "";
+  playersHeader.appendChild(thRounds);
 
   players.forEach((player) => {
     const th = document.createElement("th");
@@ -470,4 +462,38 @@ function applyCorrection() {
   } else {
     alert("Por favor, ingrese un valor numérico válido.");
   }
+}
+
+function hasRepeatedDealer() {
+  const dealerCounts = {};
+  tableRows.forEach((row, roundIndex) => {
+    const dealerIndex = roundIndex % players.length;
+    if (!dealerCounts[dealerIndex]) {
+      dealerCounts[dealerIndex] = 0;
+    }
+    dealerCounts[dealerIndex]++;
+  });
+
+  for (let dealer in dealerCounts) {
+    if (dealerCounts[dealer] > 1) {
+      return parseInt(dealer);
+    }
+  }
+  return -1;
+}
+
+function reassignDealer(roundNumber) {
+  let dealerIndex = (roundNumber - 1) % players.length;
+  let newDealerIndex = Math.floor(Math.random() * players.length);
+
+  while (newDealerIndex === dealerIndex || newDealerIndex === lastDealerIndex) {
+    newDealerIndex = Math.floor(Math.random() * players.length);
+  }
+
+  lastDealerIndex = newDealerIndex;
+  alert(
+    `Al jugador ${players[dealerIndex]} le tocaba dar 2 veces la de 1. Se reasigna el repartidor a ${players[newDealerIndex]}.`
+  );
+
+  return newDealerIndex;
 }
