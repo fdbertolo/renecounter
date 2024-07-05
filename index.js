@@ -165,16 +165,12 @@ function addRoundRow(roundNumber) {
 
   // Celda de número de ronda
   const roundTd = document.createElement("td");
+  roundTd.classList.add("round");
   roundTd.innerText = ((roundNumber - 1) % rounds) + 1;
   tr.appendChild(roundTd);
 
   // Identificar al jugador que reparte en esta ronda
   let dealerIndex = (roundNumber - 1) % players.length;
-
-  // Verificar si el jugador reparte dos veces la misma cantidad de cartas
-  if (hasRepeatedDealer() === dealerIndex) {
-    dealerIndex = reassignDealer(roundNumber);
-  }
 
   lastDealerIndex = dealerIndex;
 
@@ -294,7 +290,7 @@ function askForRoundResults() {
     resultsContent.appendChild(playerResultDiv);
   });
 
-  resultsModal.style.display = "flex";
+  resultsModal.style.display = "block";
   resultsModal.style.alignItems = "center";
 }
 
@@ -462,38 +458,4 @@ function applyCorrection() {
   } else {
     alert("Por favor, ingrese un valor numérico válido.");
   }
-}
-
-function hasRepeatedDealer() {
-  const dealerCounts = {};
-  tableRows.forEach((row, roundIndex) => {
-    const dealerIndex = roundIndex % players.length;
-    if (!dealerCounts[dealerIndex]) {
-      dealerCounts[dealerIndex] = 0;
-    }
-    dealerCounts[dealerIndex]++;
-  });
-
-  for (let dealer in dealerCounts) {
-    if (dealerCounts[dealer] > 1) {
-      return parseInt(dealer);
-    }
-  }
-  return -1;
-}
-
-function reassignDealer(roundNumber) {
-  let dealerIndex = (roundNumber - 1) % players.length;
-  let newDealerIndex = Math.floor(Math.random() * players.length);
-
-  while (newDealerIndex === dealerIndex || newDealerIndex === lastDealerIndex) {
-    newDealerIndex = Math.floor(Math.random() * players.length);
-  }
-
-  lastDealerIndex = newDealerIndex;
-  alert(
-    `Al jugador ${players[dealerIndex]} le tocaba dar 2 veces la de 1. Se reasigna el repartidor a ${players[newDealerIndex]}.`
-  );
-
-  return newDealerIndex;
 }
