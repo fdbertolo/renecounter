@@ -7,7 +7,7 @@ html {
 * {
   box-sizing: border-box;
   font-family: "Manrope", sans-serif;
-  font-weight: 400;z
+  font-weight: 400;
   font-optical-sizing: auto;
 }
 
@@ -156,6 +156,7 @@ button.short {
   display: grid;
   font-size: 12px;
   padding: 4px 0;
+  min-width: 40px;
 }
 
 .negative {
@@ -164,6 +165,14 @@ button.short {
 }
 
 .bets-cell {
-  width: 30px;
+  min-width: 10px;
+  width: 20px;
   text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+td.round {
+  font-size: 12px;
+  min-width: 20px;
 }
