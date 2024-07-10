@@ -7,6 +7,7 @@ let currentRoundResults = [];
 let tableRows = [];
 let playerPoints = {};
 let lastDealerIndex = -1;
+let orderedPlayers = [];
 
 // Al cargar la página
 document.addEventListener("DOMContentLoaded", (event) => {
@@ -79,7 +80,7 @@ function addCustomPlayer() {
     updateSelectedPlayers();
     document.getElementById("customPlayerName").value = "";
   } else if (players.includes(customPlayerName)) {
-    alert(`${customPlayerName} ya ha sido seleccionado.`);
+    alert(`${customPlayerName} ya juega. ¿Se viene el clon o qué?`);
   }
 }
 
@@ -102,7 +103,7 @@ function confirmPlayers() {
     document.getElementById("playersModal").style.display = "none";
     showRoundsModal();
   } else {
-    alert("Debe seleccionar al menos un jugador.");
+    alert("Jajaja quería armar una partida sin jugadores el loco.");
   }
 }
 
@@ -115,7 +116,7 @@ function selectRounds(selectedRounds) {
   const maxRounds = Math.floor(40 / players.length);
   if (selectedRounds > maxRounds) {
     alert(
-      `Con ${players.length} jugadores, solo puedes jugar un máximo de ${maxRounds} rondas.`
+      `Mamita querida. Siendo ${players.length} Solamente van a poder jugar ${maxRounds} rondas. ¿No sabés dividir?`
     );
     return;
   }
@@ -157,6 +158,7 @@ function generateGameTable() {
 
   // Mostrar el botón "Corregir" cuando se genera la tabla
   document.getElementById("correctButton").classList.remove("hidden");
+  document.getElementById("resetButton").classList.remove("hidden");
 }
 
 function addRoundRow(roundNumber) {
@@ -207,16 +209,26 @@ function showBettingModal(dealerIndex) {
   const bettingContent = document.getElementById("bettingContent");
 
   const effectiveRound = ((currentRound - 1) % rounds) + 1; // Ajustar la ronda efectiva
-  let startingIndex = (dealerIndex + 1) % players.length;
+  var startingIndex = (dealerIndex + 1) % players.length;
+  let orderPlayers = (array, index) =>
+    index >= 0 && index < array.length
+      ? [...Array(array.length).keys()]
+          .slice(index)
+          .concat([...Array(array.length).keys()].slice(0, index))
+      : (() => {
+          throw new Error("Índice fuera de rango");
+        })();
+  let ordeningPlayers = orderPlayers(players, startingIndex);
+  orderedPlayers = ordeningPlayers;
 
   // Función para mostrar la pregunta de apuesta para el jugador actual
   const askForBet = () => {
     bettingContent.innerHTML = `<p><b class="player">${
       players[startingIndex]
-    }</b><br><br>¿Cuántas cartas querés apostar en la ronda ${currentRound}?
+    }</b><br><br>¿Cuánto querés apostar en la ronda ${currentRound}?
     ${
       currentRoundBets.length
-        ? `<br><br>Apostados hasta el momento: ${currentRoundBets}</p>`
+        ? `<br><br>Apuestas hechas: ${currentRoundBets}</p>`
         : ""
     }`;
     for (let i = 0; i <= effectiveRound; i++) {
@@ -249,7 +261,9 @@ function showBettingModal(dealerIndex) {
     if (currentBettorIndex === players.length - 1) {
       const totalBets = currentRoundBets.reduce((a, b) => a + b, 0);
       if (totalBets === currentRound) {
-        alert(`No se puede apostar: ${bet}. Tiene que aprenderse las reglas.`);
+        alert(
+          `No podés apostar: ${bet}. Hace 80 años que jugamos a esto y no sabés las reglas.`
+        );
         currentRoundBets.pop();
         return;
       }
@@ -276,7 +290,7 @@ function askForRoundResults() {
 
   const effectiveRound = ((currentRound - 1) % rounds) + 1; // Ajustar la ronda efectiva
 
-  resultsContent.innerHTML = `<p>¿Quién perdió y por cuánto en la ronda ${currentRound}?</p>`;
+  resultsContent.innerHTML = `<p>¿Cómo salieron en la ronda ${currentRound}?</p>`;
 
   players.forEach((player, index) => {
     const playerResultDiv = document.createElement("div");
@@ -315,7 +329,8 @@ function confirmResult(player, result, event) {
         "Todos los jugadores pusieron que ganaron. No se hagan los boludos que alguno tuvo que perder."
       );
       // Reiniciar los botones para que los jugadores puedan elegir de nuevo
-      buttons.forEach((button) => {
+      let allButtons = document.querySelectorAll("#resultsModal button");
+      allButtons.forEach((button) => {
         button.disabled = false;
       });
       return; // Evitar cerrar el modal si todos han seleccionado "Ganó"
@@ -333,13 +348,20 @@ function closeResultsModal() {
 function updateTableWithResults() {
   const roundRowIndex = currentRound - 1;
   const row = tableRows[roundRowIndex];
-
   players.forEach((player, index) => {
     const betCellIndex = index * 2;
     const resultCellIndex = betCellIndex + 1;
 
     // Actualizar celda de apuestas
-    row[betCellIndex].innerText = currentRoundBets[index];
+    let reorderBets = (array, indexes) => {
+      let result = new Array(array.length);
+      indexes.forEach((index, i) => {
+        result[index] = array[i];
+      });
+      return result;
+    };
+    let orderedBets = reorderBets(currentRoundBets, orderedPlayers);
+    row[betCellIndex].innerText = orderedBets[index];
 
     // Actualizar celda de resultados
     const result = currentRoundResults[index];
@@ -450,12 +472,50 @@ function applyCorrection() {
     playerPoints[selectedPlayer] += correctionPoints;
     updateTableHeader(); // Actualiza la cabecera con los nuevos puntos
     alert(
-      `Se han ${correctionPoints >= 0 ? "asignado" : "restado"} ${Math.abs(
+      `Se han ${correctionPoints >= 0 ? "sumado" : "restado"} ${Math.abs(
         correctionPoints
       )} puntos a ${selectedPlayer}.`
     );
     closeCorrectionModal();
   } else {
     alert("Por favor, ingrese un valor numérico válido.");
+  }
+}
+
+function resetGame() {
+  if (
+    confirm(
+      "¿Vas a reiniciar la partida? ¿Ya terminó la anterior o andás cagoneando?"
+    )
+  ) {
+    // Limpiar variables
+    players = [];
+    rounds = 0;
+    currentRound = 1;
+    currentBettorIndex = 0;
+    currentRoundBets = [];
+    currentRoundResults = [];
+    tableRows = [];
+    playerPoints = {};
+    lastDealerIndex = -1;
+
+    // Limpiar almacenamiento local
+    localStorage.removeItem("players");
+    localStorage.removeItem("rounds");
+
+    // Resetear la interfaz
+    document.getElementById("selectedPlayers").innerHTML = "";
+    document.getElementById("playersHeader").innerHTML = "";
+    document.getElementById("gameRounds").innerHTML = "";
+    document.getElementById("mainTableContainer").classList.add("hidden");
+    document.getElementById("correctButton").classList.add("hidden");
+
+    const playerButtons = document.querySelectorAll("#playerButtons button");
+    playerButtons.forEach((button) => {
+      button.disabled = false;
+    });
+
+    // Volver a mostrar la pantalla de bienvenida
+    showWelcomeScreen();
   }
 }
