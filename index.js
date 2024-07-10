@@ -519,3 +519,15 @@ function resetGame() {
     showWelcomeScreen();
   }
 }
+
+// Evento para detectar el intento de cerrar o recargar la página
+window.addEventListener("beforeunload", (event) => {
+  // Mensaje de advertencia
+  const warningMessage =
+    "¿Estás seguro de que quieres salir? Se perderán los datos no guardados.";
+
+  // Establece el mensaje de advertencia
+  event.preventDefault();
+  event.returnValue = warningMessage;
+  return warningMessage;
+});
