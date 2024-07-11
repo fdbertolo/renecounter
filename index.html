@@ -61,9 +61,10 @@
       <tbody id="gameRounds"></tbody>
     </table>
   </div>
-  <button id="correctButton" class="hidden" onclick="showCorrectionModal()">Corregir</button>
-  <button id="resetButton" class="hidden" onclick="resetGame()">Reiniciar</button>
-
+  <div class="flex">
+    <button id="correctButton" class="hidden" onclick="showCorrectionModal()">Corregir</button>
+    <button id="resetButton" class="hidden" onclick="resetGame()">Reiniciar</button>
+  </div>
   <div id="bettingModal" class="modal">
     <div class="modal-content" id="bettingContent">
       <!-- Contenido dinámico -->
@@ -79,12 +80,16 @@
   <div id="correctionModal" class="modal">
     <div class="modal-content">
       <h2>Corregir Puntaje</h2>
-      <select id="correctionPlayerSelect">
-        <!-- Opciones generadas dinámicamente -->
-      </select>
-      <input id="correctionPoints" placeholder="Puntos">
-      <button onclick="applyCorrection()">Aplicar</button>
-      <button onclick="closeCorrectionModal()">Cerrar</button>
+      <div class="flex">
+        <select id="correctionPlayerSelect">
+          <!-- Opciones generadas dinámicamente -->
+        </select>
+        <input id="correctionPoints" placeholder="Puntos">
+      </div>
+      <div class="flex">
+        <button onclick="applyCorrection()">Aplicar</button>
+        <button onclick="closeCorrectionModal()">Cerrar</button>
+      </div>
     </div>
   </div>
 
