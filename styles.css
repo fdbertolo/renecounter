@@ -53,7 +53,7 @@ b {
 
 table {
   width: calc(100% - 20px);
-  height: calc(100vh - 100px);
+  height: calc(100dvh - 100px);
   border-collapse: collapse;
   margin: 10px;
   box-sizing: border-box;
