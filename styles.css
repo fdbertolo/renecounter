@@ -53,6 +53,7 @@ b {
 
 table {
   width: calc(100% - 20px);
+  height: calc(100vh - 100px);
   border-collapse: collapse;
   margin: 10px;
   box-sizing: border-box;
@@ -122,6 +123,14 @@ button {
   border-radius: 6px;
   border: 1px solid #464646;
   color: #f8f8f8;
+  margin: 8px;
+  cursor: default;
+  &:not([disabled]) {
+    cursor: pointer;
+    &:hover {
+      background: #37474f;
+    }
+  }
 }
 
 #podiumContent {
@@ -147,16 +156,29 @@ button.large {
   background: #121212;
   border-radius: 6px;
   border: 2px solid #464646;
+  &:hover {
+    background: #37474f;
+  }
 }
 
 button.short {
-  background: #6c668599;
+  background: #263238;
   border-radius: 0;
-  border: 2px solid #6c6685;
+  border: 2px solid #263238;
+  color: #b2b2b2;
   display: grid;
-  font-size: 12px;
+  font-size: 14px;
+  font-weight: 600;
   padding: 4px 0;
   min-width: 40px;
+  height: -webkit-fill-available;
+  place-content: center;
+  &:hover {
+    background: #37474f;
+  }
+  &[disabled] {
+    opacity: 0;
+  }
 }
 
 .negative {
@@ -175,4 +197,11 @@ button.short {
 td.round {
   font-size: 12px;
   min-width: 20px;
+}
+
+.flex {
+  display: flex;
+  > * {
+    flex: 1;
+  }
 }
