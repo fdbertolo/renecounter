@@ -153,7 +153,7 @@ function generateGameTable() {
   for (let i = 1; i <= totalRounds; i++) {
     addRoundRow(i);
   }
-
+  showOnlyFirstShortButton();
   tableContainer.classList.remove("hidden");
 
   // Mostrar el botón "Corregir" cuando se genera la tabla
@@ -367,9 +367,9 @@ function updateTableWithResults() {
     const result = currentRoundResults[index];
     if (result === 0) {
       row[resultCellIndex].innerHTML = `<span>${
-        10 + currentRoundBets[index]
+        10 + orderedBets[index]
       }</span>`;
-      playerPoints[player] += 10 + currentRoundBets[index];
+      playerPoints[player] += 10 + orderedBets[index];
     } else {
       row[resultCellIndex].innerHTML = `<span class="${
         result < 0 ? "negative" : ""
@@ -380,6 +380,7 @@ function updateTableWithResults() {
 
   updateTableHeader();
   updateRoundNumbers(); // Asegurar que los números de ronda se actualicen
+  showOnlyFirstShortButton();
 
   // Verificar si todas las rondas han sido completadas
   const totalRounds = rounds * 2;
@@ -531,3 +532,14 @@ window.addEventListener("beforeunload", (event) => {
   event.returnValue = warningMessage;
   return warningMessage;
 });
+
+function showOnlyFirstShortButton() {
+  const shortButtons = document.querySelectorAll("button.short");
+  shortButtons.forEach((button, index) => {
+    if (index === 0) {
+      button.disabled = false;
+    } else {
+      button.disabled = true;
+    }
+  });
+}
