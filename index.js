@@ -8,9 +8,14 @@ let tableRows = [];
 let playerPoints = {};
 let lastDealerIndex = -1;
 let orderedPlayers = [];
+let gameResults = [];
 
 // Al cargar la página
 document.addEventListener("DOMContentLoaded", (event) => {
+  const storedGameResults = localStorage.getItem("gameResults");
+  if (storedGameResults) {
+    gameResults = JSON.parse(storedGameResults);
+  }
   showWelcomeScreen();
 });
 
@@ -348,6 +353,8 @@ function closeResultsModal() {
 function updateTableWithResults() {
   const roundRowIndex = currentRound - 1;
   const row = tableRows[roundRowIndex];
+  let roundResults = [];
+
   players.forEach((player, index) => {
     const betCellIndex = index * 2;
     const resultCellIndex = betCellIndex + 1;
@@ -376,7 +383,21 @@ function updateTableWithResults() {
       }">${result}</span>`;
       playerPoints[player] += result;
     }
+
+    roundResults.push({
+      player: player,
+      bet: orderedBets[index],
+      result: result
+    });
   });
+
+  gameResults.push({
+    round: currentRound,
+    results: roundResults
+  });
+
+  // Guardar en localStorage
+  localStorage.setItem("gameResults", JSON.stringify(gameResults));
 
   updateTableHeader();
   updateRoundNumbers(); // Asegurar que los números de ronda se actualicen
@@ -499,10 +520,12 @@ function resetGame() {
     tableRows = [];
     playerPoints = {};
     lastDealerIndex = -1;
+    gameResults = [];
 
     // Limpiar almacenamiento local
     localStorage.removeItem("players");
     localStorage.removeItem("rounds");
+    localStorage.removeItem("gameResults");
 
     // Resetear la interfaz
     document.getElementById("selectedPlayers").innerHTML = "";
