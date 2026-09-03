@@ -67,8 +67,16 @@
     <button id="resetButton" class="hidden" onclick="resetGame()">Reiniciar</button>
   </div>
   <div id="bettingModal" class="modal">
-    <div class="modal-content" id="bettingContent">
-      <!-- Contenido dinámico -->
+    <div class="modal-content">
+      <div id="bettingHeader" style="border-bottom: 1px solid #464646; padding-bottom: 10px; margin-bottom: 20px;">
+        <h3 style="margin-top: 0;">A quién hay que bajar:</h3>
+        <div id="bettingLeaderboard" style="font-size: 14px; text-align: left; display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 5px;">
+          <!-- Leaderboard dinámico -->
+        </div>
+      </div>
+      <div id="bettingContent">
+        <!-- Contenido dinámico -->
+      </div>
     </div>
   </div>
 
@@ -91,6 +99,13 @@
         <button onclick="applyCorrection()">Aplicar</button>
         <button onclick="closeCorrectionModal()">Cerrar</button>
       </div>
+    </div>
+  </div>
+
+  <div id="dealerWarningModal" class="modal">
+    <div class="modal-content">
+      <h2 id="dealerWarningText" style="font-size: 1.2em; margin-bottom: 20px;"></h2>
+      <div id="dealerWarningButtons" style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;"></div>
     </div>
   </div>
 

@@ -7,6 +7,7 @@ let currentRoundResults = [];
 let tableRows = [];
 let playerPoints = {};
 let lastDealerIndex = -1;
+let secondHalfDealerOffset = 0;
 let orderedPlayers = [];
 let gameResults = [];
 
@@ -128,8 +129,42 @@ function selectRounds(selectedRounds) {
 
   rounds = selectedRounds;
   localStorage.setItem("rounds", rounds);
+  
+  if (rounds % players.length === 0) {
+    showDealerWarningModal();
+  } else {
+    secondHalfDealerOffset = 0;
+    document.getElementById("roundsModal").style.display = "none";
+    generateGameTable();
+  }
+}
+
+function showDealerWarningModal() {
   document.getElementById("roundsModal").style.display = "none";
-  generateGameTable();
+  const modal = document.getElementById("dealerWarningModal");
+  const text = document.getElementById("dealerWarningText");
+  const buttonsDiv = document.getElementById("dealerWarningButtons");
+  
+  const screwedPlayer = players[0];
+  
+  text.innerText = `Están re cagando a ${screwedPlayer}, le toca dar 2 veces la de 1. Vean a quién le toca más baja y le toca la de 1 después:`;
+  
+  buttonsDiv.innerHTML = "";
+  players.forEach((player, index) => {
+    if (index !== 0) {
+      const btn = document.createElement("button");
+      btn.innerText = player;
+      btn.onclick = () => {
+        secondHalfDealerOffset = index;
+        modal.style.display = "none";
+        generateGameTable();
+      };
+      buttonsDiv.appendChild(btn);
+    }
+  });
+  
+  modal.style.display = "flex";
+  modal.style.alignItems = "center";
 }
 
 function generateGameTable() {
@@ -177,7 +212,13 @@ function addRoundRow(roundNumber) {
   tr.appendChild(roundTd);
 
   // Identificar al jugador que reparte en esta ronda
-  let dealerIndex = (roundNumber - 1) % players.length;
+  let baseDealerIndex = (roundNumber - 1) % players.length;
+  let dealerIndex;
+  if (roundNumber > rounds) {
+    dealerIndex = (baseDealerIndex + secondHalfDealerOffset) % players.length;
+  } else {
+    dealerIndex = baseDealerIndex;
+  }
 
   lastDealerIndex = dealerIndex;
 
@@ -212,6 +253,29 @@ function startBetting(roundNumber, dealerIndex) {
 function showBettingModal(dealerIndex) {
   const bettingModal = document.getElementById("bettingModal");
   const bettingContent = document.getElementById("bettingContent");
+  const bettingLeaderboard = document.getElementById("bettingLeaderboard");
+
+  // Ordenar jugadores por puntaje y mostrar
+  const sortedPlayers = Object.keys(playerPoints).sort((a, b) => {
+    if (playerPoints[b] !== playerPoints[a]) {
+      return playerPoints[b] - playerPoints[a];
+    }
+    if (a === 'Fer') return 1;
+    if (b === 'Fer') return -1;
+    return 0;
+  });
+  
+  bettingLeaderboard.innerHTML = "";
+  sortedPlayers.forEach((player, index) => {
+    const playerDiv = document.createElement("div");
+    playerDiv.innerText = `${index + 1}. ${player} (${playerPoints[player]})`;
+    // Resaltar al primero (o primeros si hay empate)
+    if (playerPoints[player] === playerPoints[sortedPlayers[0]] && currentRound > 1) {
+      playerDiv.style.fontWeight = "bold";
+      playerDiv.style.color = "#ffb041";
+    }
+    bettingLeaderboard.appendChild(playerDiv);
+  });
 
   const effectiveRound = ((currentRound - 1) % rounds) + 1; // Ajustar la ronda efectiva
   var startingIndex = (dealerIndex + 1) % players.length;
@@ -298,8 +362,10 @@ function askForRoundResults() {
   resultsContent.innerHTML = `<p>¿Cómo salieron en la ronda ${currentRound}?</p>`;
 
   players.forEach((player, index) => {
+    const playerBet = currentRoundBets[orderedPlayers.indexOf(index)];
+    const ratEmoji = playerBet === 0 ? " 🐀" : "";
     const playerResultDiv = document.createElement("div");
-    playerResultDiv.innerHTML = `<p><b class="player">${player}</b></p>`;
+    playerResultDiv.innerHTML = `<p><b class="player">${player}</b> <span style="font-size: 16px; font-weight: normal; color: #b2b2b2;"> Apostó ${playerBet}${ratEmoji}</span></p>`;
     for (let i = -effectiveRound; i <= 0; i++) {
       const resultButton = document.createElement("button");
       resultButton.innerText = i === 0 ? "Ganó" : i;
@@ -423,17 +489,41 @@ function showPodium() {
   const podiumContent = document.getElementById("podiumContent");
 
   // Ordenar los jugadores por puntaje de mayor a menor
-  const sortedPlayers = Object.keys(playerPoints).sort(
-    (a, b) => playerPoints[b] - playerPoints[a]
-  );
+  const sortedPlayers = Object.keys(playerPoints).sort((a, b) => {
+    if (playerPoints[b] !== playerPoints[a]) {
+      return playerPoints[b] - playerPoints[a];
+    }
+    if (a === 'Fer') return 1;
+    if (b === 'Fer') return -1;
+    return 0;
+  });
+
+  // Calcular cantidad de veces que cada jugador apostó 0
+  const zeroBetsCount = {};
+  players.forEach(p => zeroBetsCount[p] = 0);
+  
+  gameResults.forEach(roundData => {
+    roundData.results.forEach(r => {
+      if (r.bet === 0) {
+        zeroBetsCount[r.player]++;
+      }
+    });
+  });
+
+  // Encontrar el máximo de veces que se apostó 0
+  let maxZeroBets = 0;
+  Object.values(zeroBetsCount).forEach(count => {
+    if (count > maxZeroBets) maxZeroBets = count;
+  });
 
   // Generar el contenido del podio
   podiumContent.innerHTML = "";
   sortedPlayers.forEach((player, index) => {
+    const isRat = maxZeroBets > 0 && zeroBetsCount[player] === maxZeroBets;
+    const ratEmoji = isRat ? " 🐀" : "";
+    
     const playerDiv = document.createElement("div");
-    playerDiv.innerText = `${index + 1}. ${player} (${
-      playerPoints[player]
-    } puntos)`;
+    playerDiv.innerText = `${index + 1}. ${player}${ratEmoji} (${playerPoints[player]} puntos)`;
     podiumContent.appendChild(playerDiv);
   });
 
@@ -520,6 +610,7 @@ function resetGame() {
     tableRows = [];
     playerPoints = {};
     lastDealerIndex = -1;
+    secondHalfDealerOffset = 0;
     gameResults = [];
 
     // Limpiar almacenamiento local
