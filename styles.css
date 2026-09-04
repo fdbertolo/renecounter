@@ -56,8 +56,9 @@ b {
 }
 
 .modal-content {
+  position: relative;
   background-color: var(--bg-modal);
-  margin:40% auto;
+  margin: 40% auto;
   padding: 30px 24px;
   border: 1px solid var(--border-color);
   border-radius: 16px;
@@ -390,9 +391,56 @@ td.round {
   align-items: center;
 }
 
+#bettingContent  {
+  display: flex;
+  flex-direction: column;
+}
+
 #bettingContent button {
   padding: 12px 16px;
   min-width: 48px;
+}
+
+.back-arrow-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 38px;
+  height: 38px;
+  min-width: unset;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  box-shadow: none;
+}
+
+.back-arrow-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+  border-color: var(--btn-bg);
+  transform: translateX(-2px);
+}
+
+.bets-summary  {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  order: 2;
+}
+
+.bets-summary span {
+  background-color: #1e293b;
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 
 /* Correction modal */

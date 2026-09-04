@@ -292,38 +292,54 @@ function showBettingModal(dealerIndex) {
 
   // Función para mostrar la pregunta de apuesta para el jugador actual
   const askForBet = () => {
-    bettingContent.innerHTML = `<p><b class="player">${
-      players[startingIndex]
-    }</b><br><br>¿Cuánto querés apostar en la ronda ${currentRound}?
-    ${
-      currentRoundBets.length
-        ? `<br><br>Apuestas hechas: ${currentRoundBets}</p>`
-        : ""
-    }`;
+    const currentPlayer = players[orderedPlayers[currentBettorIndex]];
+
+    const backButton = document.getElementById("betBackButton");
+    if (backButton) {
+      if (currentBettorIndex > 0) {
+        backButton.classList.remove("hidden");
+        backButton.onclick = () => goBackBet();
+      } else {
+        backButton.classList.add("hidden");
+      }
+    }
+
+    let betsSummary = "";
+    if (currentRoundBets.length > 0) {
+      const summaryItems = currentRoundBets
+        .map((bet, idx) => `<span><b>${players[orderedPlayers[idx]]}:</b> ${bet}</span>`)
+        .join(" ");
+      betsSummary = `<div class="bets-summary" style="margin: 12px 0 16px 0; font-size: 14px; color: var(--text-muted); background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 8px;">${summaryItems}</div>`;
+    }
+
+    bettingContent.innerHTML = `<p><b class="player">${currentPlayer}</b><br><br>¿Cuánto querés apostar en la ronda ${currentRound}?</p>
+    ${betsSummary}
+    <div id="betButtonsContainer" style="margin-bottom: 8px;"></div>`;
+
+    const betButtonsContainer = document.getElementById("betButtonsContainer");
     for (let i = 0; i <= effectiveRound; i++) {
       const betButton = document.createElement("button");
       betButton.innerText = i;
       betButton.onclick = () => confirmBet(i, dealerIndex);
-      bettingContent.appendChild(betButton);
+      betButtonsContainer.appendChild(betButton);
+    }
+  };
+
+  const goBackBet = () => {
+    if (currentBettorIndex > 0) {
+      currentRoundBets.pop();
+      currentBettorIndex--;
+      askForBet();
     }
   };
 
   // Mostrar la pregunta de apuesta para el jugador inicial
   askForBet();
 
-  // Función para avanzar al siguiente jugador y mostrar su pregunta de apuesta
-  const nextPlayer = () => {
-    startingIndex = (startingIndex + 1) % players.length;
-    if (startingIndex === dealerIndex) {
-      startingIndex = (startingIndex + 1) % players.length; // Saltar al siguiente jugador después del repartidor
-    }
-    askForBet();
-  };
-
   bettingModal.style.display = "flex";
   bettingModal.style.alignItems = "center";
 
-  // Llamar a nextPlayer después de confirmar la apuesta del jugador actual
+  // Llamar a askForBet o finalizar después de confirmar la apuesta del jugador actual
   const confirmBet = (bet, dealerIndex) => {
     currentRoundBets.push(bet);
 
@@ -340,13 +356,11 @@ function showBettingModal(dealerIndex) {
 
     currentBettorIndex++;
 
-    if (currentBettorIndex < players.length - 1) {
-      // Asegurarse de que el dealer sea el último
-      nextPlayer();
-    } else if (currentBettorIndex === players.length - 1) {
-      startingIndex = dealerIndex; // El dealer es el último en apostar
+    if (currentBettorIndex < players.length) {
       askForBet();
     } else {
+      const backButton = document.getElementById("betBackButton");
+      if (backButton) backButton.classList.add("hidden");
       document.getElementById("bettingModal").style.display = "none";
       askForRoundResults();
     }
