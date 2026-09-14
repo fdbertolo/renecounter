@@ -10,6 +10,117 @@ let lastDealerIndex = -1;
 let secondHalfDealerOffset = 0;
 let orderedPlayers = [];
 let gameResults = [];
+let currentRoundLosers = [];
+let currentRoundLoserScores = {};
+
+// Diálogos in-app compatibles con iPhone / Safari
+const nativeAlert = window.alert ? window.alert.bind(window) : () => {};
+const nativeConfirm = window.confirm ? window.confirm.bind(window) : () => false;
+
+function showAlert(message, onAcceptOrOptions) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("customDialogModal");
+    const icon = document.getElementById("customDialogIcon");
+    const title = document.getElementById("customDialogTitle");
+    const msg = document.getElementById("customDialogMessage");
+    const actions = document.getElementById("customDialogActions");
+
+    let callback = null;
+    let customTitle = "¡Atención!";
+    let customIcon = "⚠️";
+    let buttonText = "Entendido";
+
+    if (typeof onAcceptOrOptions === "function") {
+      callback = onAcceptOrOptions;
+    } else if (onAcceptOrOptions && typeof onAcceptOrOptions === "object") {
+      if (onAcceptOrOptions.onAccept) callback = onAcceptOrOptions.onAccept;
+      if (onAcceptOrOptions.title) customTitle = onAcceptOrOptions.title;
+      if (onAcceptOrOptions.icon) customIcon = onAcceptOrOptions.icon;
+      if (onAcceptOrOptions.buttonText) buttonText = onAcceptOrOptions.buttonText;
+    }
+
+    if (!modal) {
+      nativeAlert(message);
+      if (callback) callback();
+      resolve();
+      return;
+    }
+
+    icon.innerText = customIcon;
+    title.innerText = customTitle;
+    msg.innerText = message;
+    actions.innerHTML = "";
+
+    const okBtn = document.createElement("button");
+    okBtn.className = "custom-dialog-btn";
+    okBtn.innerText = buttonText;
+    okBtn.onclick = () => {
+      modal.style.display = "none";
+      if (callback) callback();
+      resolve();
+    };
+
+    actions.appendChild(okBtn);
+    modal.style.display = "flex";
+    okBtn.focus();
+  });
+}
+
+function showConfirm(message, onConfirm, onCancel, options = {}) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("customDialogModal");
+    const icon = document.getElementById("customDialogIcon");
+    const title = document.getElementById("customDialogTitle");
+    const msg = document.getElementById("customDialogMessage");
+    const actions = document.getElementById("customDialogActions");
+
+    const customTitle = options.title || "¿Estás seguro?";
+    const customIcon = options.icon || "❓";
+    const confirmText = options.confirmText || "Confirmar";
+    const cancelText = options.cancelText || "Cancelar";
+
+    if (!modal) {
+      const res = nativeConfirm(message);
+      if (res && typeof onConfirm === "function") onConfirm();
+      else if (!res && typeof onCancel === "function") onCancel();
+      resolve(res);
+      return;
+    }
+
+    icon.innerText = customIcon;
+    title.innerText = customTitle;
+    msg.innerText = message;
+    actions.innerHTML = "";
+
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "custom-dialog-btn secondary";
+    cancelBtn.innerText = cancelText;
+    cancelBtn.onclick = () => {
+      modal.style.display = "none";
+      if (typeof onCancel === "function") onCancel();
+      resolve(false);
+    };
+
+    const confirmBtn = document.createElement("button");
+    confirmBtn.className = "custom-dialog-btn danger";
+    confirmBtn.innerText = confirmText;
+    confirmBtn.onclick = () => {
+      modal.style.display = "none";
+      if (typeof onConfirm === "function") onConfirm();
+      resolve(true);
+    };
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(confirmBtn);
+    modal.style.display = "flex";
+    confirmBtn.focus();
+  });
+}
+
+// Override global para atrapar cualquier alert nativo no contemplado
+window.alert = function (message) {
+  showAlert(message);
+};
 
 // Al cargar la página
 document.addEventListener("DOMContentLoaded", (event) => {
@@ -17,6 +128,7 @@ document.addEventListener("DOMContentLoaded", (event) => {
   if (storedGameResults) {
     gameResults = JSON.parse(storedGameResults);
   }
+  renderPlayerButtons();
   showWelcomeScreen();
 });
 
@@ -50,6 +162,54 @@ function toggleTheme() {
   }
 }
 
+// Listas de jugadores por modo
+const defaultPlayersList = ["Fer", "Ari", "Laro", "Juryk", "Lina", "Fede", "Alitan"];
+const ariPlayersList = ["Stefi", "Vane", "Ari", "Flor", "Marian", "Leo"];
+let currentMode = "classic"; // "classic" | "ari"
+
+function renderPlayerButtons() {
+  const container = document.getElementById("playerButtons");
+  if (!container) return;
+
+  const currentList = currentMode === "ari" ? ariPlayersList : defaultPlayersList;
+  container.innerHTML = "";
+
+  currentList.forEach((name) => {
+    const btn = document.createElement("button");
+    btn.innerText = name;
+    if (players.includes(name)) {
+      btn.disabled = true;
+    }
+    btn.onclick = () => {
+      selectPlayer(name);
+      btn.disabled = true;
+    };
+    container.appendChild(btn);
+  });
+
+  const customBtn = document.createElement("button");
+  customBtn.innerText = "Otro";
+  customBtn.onclick = () => showCustomPlayerInput();
+  container.appendChild(customBtn);
+}
+
+function setPlayerMode(mode) {
+  currentMode = mode;
+  const tabClassic = document.getElementById("tabClassicMode");
+  const tabAri = document.getElementById("tabAriMode");
+
+  if (tabClassic && tabAri) {
+    if (mode === "ari") {
+      tabClassic.classList.remove("active");
+      tabAri.classList.add("active");
+    } else {
+      tabClassic.classList.add("active");
+      tabAri.classList.remove("active");
+    }
+  }
+  renderPlayerButtons();
+}
+
 function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "flex";
 }
@@ -60,8 +220,11 @@ function continueFromWelcome() {
 }
 
 function showPlayersModal() {
-  document.getElementById("playersModal").style.display = "flex";
-  document.getElementById("playersModal").style.alignItems = "center";
+  renderPlayerButtons();
+  const modal = document.getElementById("playersModal");
+  modal.style.display = "flex";
+  modal.style.alignItems = "center";
+  modal.style.justifyContent = "center";
 }
 
 function selectPlayer(player) {
@@ -69,7 +232,7 @@ function selectPlayer(player) {
     players.push(player);
     updateSelectedPlayers();
   } else {
-    alert(`${player} ya ha sido seleccionado.`);
+    showAlert(`${player} ya ha sido seleccionado.`);
   }
 }
 
@@ -84,9 +247,10 @@ function addCustomPlayer() {
   if (customPlayerName && !players.includes(customPlayerName)) {
     players.push(customPlayerName);
     updateSelectedPlayers();
+    renderPlayerButtons();
     document.getElementById("customPlayerName").value = "";
   } else if (players.includes(customPlayerName)) {
-    alert(`${customPlayerName} ya juega. ¿Se viene el clon o qué?`);
+    showAlert(`${customPlayerName} ya juega. ¿Se viene el clon o qué?`);
   }
 }
 
@@ -109,7 +273,7 @@ function confirmPlayers() {
     document.getElementById("playersModal").style.display = "none";
     showRoundsModal();
   } else {
-    alert("Jajaja quería armar una partida sin jugadores el loco.");
+    showAlert("Jajaja quería armar una partida sin jugadores el loco.");
   }
 }
 
@@ -121,7 +285,7 @@ function showRoundsModal() {
 function selectRounds(selectedRounds) {
   const maxRounds = Math.floor(40 / players.length);
   if (selectedRounds > maxRounds) {
-    alert(
+    showAlert(
       `Mamita querida. Siendo ${players.length} Solamente van a poder jugar ${maxRounds} rondas. ¿No sabés dividir?`
     );
     return;
@@ -346,7 +510,7 @@ function showBettingModal(dealerIndex) {
     if (currentBettorIndex === players.length - 1) {
       const totalBets = currentRoundBets.reduce((a, b) => a + b, 0);
       if (totalBets === currentRound) {
-        alert(
+        showAlert(
           `No podés apostar: ${bet}. Hace 80 años que jugamos a esto y no sabés las reglas.`
         );
         currentRoundBets.pop();
@@ -368,62 +532,195 @@ function showBettingModal(dealerIndex) {
 }
 
 function askForRoundResults() {
+  currentRoundLosers = [];
+  currentRoundLoserScores = {};
+  showLosersSelectionStep();
+}
+
+function showLosersSelectionStep() {
   const resultsModal = document.getElementById("resultsModal");
   const resultsContent = document.getElementById("resultsContent");
+  const backButton = document.getElementById("resultsBackButton");
 
-  const effectiveRound = ((currentRound - 1) % rounds) + 1; // Ajustar la ronda efectiva
+  if (backButton) {
+    backButton.classList.add("hidden");
+  }
 
-  resultsContent.innerHTML = `<p>¿Cómo salieron en la ronda ${currentRound}?</p>`;
+  const effectiveRound = ((currentRound - 1) % rounds) + 1;
 
-  players.forEach((player, index) => {
-    const playerBet = currentRoundBets[orderedPlayers.indexOf(index)];
-    const ratEmoji = playerBet === 0 ? " 🐀" : "";
-    const playerResultDiv = document.createElement("div");
-    playerResultDiv.innerHTML = `<p><b class="player">${player}</b> <span style="font-size: 16px; font-weight: normal; color: #b2b2b2;"> Apostó ${playerBet}${ratEmoji}</span></p>`;
-    for (let i = -effectiveRound; i <= 0; i++) {
-      const resultButton = document.createElement("button");
-      resultButton.innerText = i === 0 ? "Ganó" : i;
-      resultButton.onclick = (event) => confirmResult(player, i, event);
-      playerResultDiv.appendChild(resultButton);
-    }
-    resultsContent.appendChild(playerResultDiv);
-  });
+  resultsContent.innerHTML = `
+    <h2>¿Quiénes perdieron?</h2>
+    <p style="color: var(--text-muted); font-size: 14px; margin-top: -10px; margin-bottom: 16px;">
+      Ronda ${currentRound} (${effectiveRound} ${effectiveRound === 1 ? "carta" : "cartas"}). Seleccioná a los que no cumplieron su apuesta:
+    </p>
+    <div id="losersButtons" class="losers-player-buttons"></div>
+    <h3 style="font-size: 14px; margin-bottom: 8px;">Perdieron:</h3>
+    <div id="selectedLosersBox" class="selected-losers-box"></div>
+    <button class="results-action-btn" onclick="proceedToLoserScoring()">Continuar</button>
+  `;
 
-  resultsModal.style.display = "block";
+  renderLosersSelectionButtons();
+
+  resultsModal.style.display = "flex";
   resultsModal.style.alignItems = "center";
 }
 
-function confirmResult(player, result, event) {
-  const playerIndex = players.indexOf(player);
-  currentRoundResults[playerIndex] = result;
+function renderLosersSelectionButtons() {
+  const losersButtons = document.getElementById("losersButtons");
+  const selectedLosersBox = document.getElementById("selectedLosersBox");
+  if (!losersButtons || !selectedLosersBox) return;
 
-  // Deshabilitar los botones después de la selección
-  const playerResultDiv = event.target.parentElement;
-  const buttons = Array.from(playerResultDiv.children);
+  losersButtons.innerHTML = "";
 
-  buttons.forEach((button) => {
-    button.disabled = true;
+  // Botones de cada jugador (con su apuesta al lado)
+  players.forEach((player, index) => {
+    const betIndex = orderedPlayers.indexOf(index);
+    const playerBet = currentRoundBets[betIndex];
+    const isSelected = currentRoundLosers.includes(player);
+
+    const btn = document.createElement("button");
+    btn.innerHTML = `${player} <span style="font-size: 11px; opacity: 0.75;">(${playerBet})</span>`;
+    btn.disabled = isSelected;
+    btn.onclick = () => {
+      if (!currentRoundLosers.includes(player)) {
+        currentRoundLosers.push(player);
+        renderLosersSelectionButtons();
+      }
+    };
+    losersButtons.appendChild(btn);
   });
 
-  // Verificar si todos los resultados están ingresados
-  if (currentRoundResults.every((r) => r !== null)) {
-    // Verificar si todos los jugadores han seleccionado "Ganó"
-    const allWinners = currentRoundResults.every((r) => r === 0);
-    if (allWinners) {
-      alert(
-        "Todos los jugadores pusieron que ganaron. No se hagan los boludos que alguno tuvo que perder."
-      );
-      // Reiniciar los botones para que los jugadores puedan elegir de nuevo
-      let allButtons = document.querySelectorAll("#resultsModal button");
-      allButtons.forEach((button) => {
-        button.disabled = false;
-      });
-      return; // Evitar cerrar el modal si todos han seleccionado "Ganó"
+  // Chips de perdedores seleccionados
+  selectedLosersBox.innerHTML = "";
+  if (currentRoundLosers.length === 0) {
+    selectedLosersBox.classList.add("empty");
+    selectedLosersBox.innerText = "Nadie seleccionado todavía (todos ganarían)";
+  } else {
+    selectedLosersBox.classList.remove("empty");
+    currentRoundLosers.forEach((player) => {
+      const chip = document.createElement("div");
+      chip.className = "loser-chip";
+      chip.title = "Clic para desmarcar";
+      chip.innerHTML = `<span>${player}</span><span class="loser-chip-remove">×</span>`;
+      chip.onclick = () => {
+        currentRoundLosers = currentRoundLosers.filter((p) => p !== player);
+        delete currentRoundLoserScores[player];
+        renderLosersSelectionButtons();
+      };
+      selectedLosersBox.appendChild(chip);
+    });
+  }
+}
+
+function proceedToLoserScoring() {
+  if (currentRoundLosers.length === 0) {
+    showAlert(
+      "¿QUEEE? Mirá si van a ganar todos. Me estás rompiendo la regla principal del juego. Fijate bien quién perdió, no sean lauchas.",
+      {
+        title: "¡Pará la mano!",
+        icon: "🐀",
+        buttonText: "Elegir perdedores"
+      }
+    );
+    return;
+  }
+
+  showLosersScoringStep();
+}
+
+function showLosersScoringStep() {
+  const resultsContent = document.getElementById("resultsContent");
+  const backButton = document.getElementById("resultsBackButton");
+
+  if (backButton) {
+    backButton.classList.remove("hidden");
+    backButton.onclick = () => showLosersSelectionStep();
+  }
+
+  const effectiveRound = ((currentRound - 1) % rounds) + 1;
+
+  // Inicializar puntaje por default en -1 para los seleccionados si aún no lo tienen
+  currentRoundLosers.forEach((player) => {
+    if (currentRoundLoserScores[player] === undefined) {
+      currentRoundLoserScores[player] = -1;
+    }
+  });
+
+  resultsContent.innerHTML = `
+    <h2>Puntos de derrota</h2>
+    <p style="color: var(--text-muted); font-size: 14px; margin-top: -10px; margin-bottom: 20px;">
+      Ronda ${currentRound} (${effectiveRound} ${effectiveRound === 1 ? "carta" : "cartas"}). Marcá los puntos que le descuentan a cada uno:
+    </p>
+    <div id="losersScoringContainer"></div>
+    <button class="results-action-btn" onclick="finalizeRoundResults()">Confirmar Ronda</button>
+  `;
+
+  renderLosersScoringRows(effectiveRound);
+}
+
+function renderLosersScoringRows(effectiveRound) {
+  const container = document.getElementById("losersScoringContainer");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  currentRoundLosers.forEach((player) => {
+    const playerIndex = players.indexOf(player);
+    const betIndex = orderedPlayers.indexOf(playerIndex);
+    const playerBet = currentRoundBets[betIndex];
+
+    const row = document.createElement("div");
+    row.className = "loser-scoring-row";
+
+    const header = document.createElement("div");
+    header.className = "loser-scoring-header";
+    header.innerHTML = `<b class="player">${player}</b> <span style="font-size: 13px; color: var(--text-muted);">(Apostó ${playerBet})</span>`;
+    row.appendChild(header);
+
+    const buttonsDiv = document.createElement("div");
+    buttonsDiv.className = "loser-scoring-buttons";
+
+    for (let score = -1; score >= -effectiveRound; score--) {
+      const btn = document.createElement("button");
+      btn.className =
+        "loser-score-btn" +
+        (currentRoundLoserScores[player] === score ? " selected" : "");
+      btn.innerText = score;
+      const s = score;
+      btn.onclick = () => {
+        currentRoundLoserScores[player] = s;
+        renderLosersScoringRows(effectiveRound);
+      };
+      buttonsDiv.appendChild(btn);
     }
 
-    updateTableWithResults();
-    closeResultsModal();
+    row.appendChild(buttonsDiv);
+    container.appendChild(row);
+  });
+}
+
+function finalizeRoundResults() {
+  for (const player of currentRoundLosers) {
+    if (currentRoundLoserScores[player] === undefined) {
+      showAlert(`Por favor elegí el puntaje de ${player}.`);
+      return;
+    }
   }
+
+  // Asignar los resultados: los que están en currentRoundLosers reciben su valor negativo, los demás 0 (Ganó)
+  currentRoundResults = players.map((player) => {
+    if (currentRoundLosers.includes(player)) {
+      return currentRoundLoserScores[player];
+    } else {
+      return 0; // Ganó
+    }
+  });
+
+  const backButton = document.getElementById("resultsBackButton");
+  if (backButton) backButton.classList.add("hidden");
+
+  updateTableWithResults();
+  closeResultsModal();
 }
 
 function closeResultsModal() {
@@ -450,18 +747,18 @@ function updateTableWithResults() {
     let orderedBets = reorderBets(currentRoundBets, orderedPlayers);
     row[betCellIndex].innerText = orderedBets[index];
 
-    // Actualizar celda de resultados
+    // Actualizar celda de resultados con puntaje acumulado + puntaje de la ronda
+    const prevPoints = playerPoints[player];
     const result = currentRoundResults[index];
+    let roundPoints = 0;
     if (result === 0) {
-      row[resultCellIndex].innerHTML = `<span>${
-        10 + orderedBets[index]
-      }</span>`;
-      playerPoints[player] += 10 + orderedBets[index];
+      roundPoints = 10 + orderedBets[index];
+      row[resultCellIndex].innerHTML = `<span class="score-accum">${prevPoints}</span><span class="score-delta positive">+${roundPoints}</span>`;
+      playerPoints[player] += roundPoints;
     } else {
-      row[resultCellIndex].innerHTML = `<span class="${
-        result < 0 ? "negative" : ""
-      }">${result}</span>`;
-      playerPoints[player] += result;
+      roundPoints = result;
+      row[resultCellIndex].innerHTML = `<span class="score-accum">${prevPoints}</span><span class="score-delta negative">${roundPoints}</span>`;
+      playerPoints[player] += roundPoints;
     }
 
     roundResults.push({
@@ -498,6 +795,107 @@ function updateRoundNumbers() {
   });
 }
 
+let confettiAnimationId = null;
+
+function startConfetti(durationMs = 4500) {
+  stopConfetti();
+  const canvas = document.getElementById("confettiCanvas");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const dpr = window.devicePixelRatio || 1;
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  canvas.width = width * dpr;
+  canvas.height = height * dpr;
+  ctx.scale(dpr, dpr);
+  canvas.style.display = "block";
+
+  const colors = [
+    "#fbbf24", // Gold
+    "#2dd4bf", // Teal
+    "#f43f5e", // Rose
+    "#a855f7", // Purple
+    "#38bdf8", // Sky blue
+    "#ffffff", // White
+    "#f59e0b"  // Amber
+  ];
+
+  const particleCount = 130;
+  const particles = [];
+
+  for (let i = 0; i < particleCount; i++) {
+    const fromLeft = i % 2 === 0;
+    particles.push({
+      x: fromLeft ? width * 0.15 : width * 0.85,
+      y: height * 0.75,
+      vx: (fromLeft ? 1 : -1) * (Math.random() * 11 + 3),
+      vy: -(Math.random() * 15 + 10),
+      size: Math.random() * 9 + 6,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      rotation: Math.random() * 360,
+      rotationSpeed: (Math.random() - 0.5) * 12,
+      opacity: 1,
+      gravity: 0.35,
+      friction: 0.982
+    });
+  }
+
+  const startTime = Date.now();
+
+  function render() {
+    const elapsed = Date.now() - startTime;
+    ctx.clearRect(0, 0, width, height);
+
+    let activeParticles = 0;
+    particles.forEach((p) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += p.gravity;
+      p.vx *= p.friction;
+      p.rotation += p.rotationSpeed;
+
+      if (elapsed > durationMs - 1200) {
+        p.opacity = Math.max(0, 1 - (elapsed - (durationMs - 1200)) / 1200);
+      }
+
+      if (p.y < height + 40 && p.opacity > 0) {
+        activeParticles++;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.globalAlpha = p.opacity;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 3, p.size, (p.size * 2) / 3);
+        ctx.restore();
+      }
+    });
+
+    if (activeParticles > 0 && elapsed < durationMs) {
+      confettiAnimationId = requestAnimationFrame(render);
+    } else {
+      stopConfetti();
+    }
+  }
+
+  confettiAnimationId = requestAnimationFrame(render);
+}
+
+function stopConfetti() {
+  if (confettiAnimationId) {
+    cancelAnimationFrame(confettiAnimationId);
+    confettiAnimationId = null;
+  }
+  const canvas = document.getElementById("confettiCanvas");
+  if (canvas) {
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.style.display = "none";
+  }
+}
+
 function showPodium() {
   const podiumModal = document.getElementById("podiumModal");
   const podiumContent = document.getElementById("podiumContent");
@@ -512,32 +910,98 @@ function showPodium() {
     return 0;
   });
 
-  // Calcular cantidad de veces que cada jugador apostó 0
+  // Calcular cantidad de veces que cada jugador apostó 0 y manos ganadas (result === 0)
   const zeroBetsCount = {};
-  players.forEach(p => zeroBetsCount[p] = 0);
-  
-  gameResults.forEach(roundData => {
-    roundData.results.forEach(r => {
+  const wonHandsCount = {};
+  players.forEach((p) => {
+    zeroBetsCount[p] = 0;
+    wonHandsCount[p] = 0;
+  });
+
+  const totalRoundsPlayed = gameResults.length;
+  gameResults.forEach((roundData) => {
+    roundData.results.forEach((r) => {
       if (r.bet === 0) {
         zeroBetsCount[r.player]++;
+      }
+      if (r.result === 0) {
+        wonHandsCount[r.player]++;
       }
     });
   });
 
   // Encontrar el máximo de veces que se apostó 0
   let maxZeroBets = 0;
-  Object.values(zeroBetsCount).forEach(count => {
+  Object.values(zeroBetsCount).forEach((count) => {
     if (count > maxZeroBets) maxZeroBets = count;
   });
 
+  // Identificar si algún jugador ganó todas las manos
+  const perfectPlayers = players.filter(
+    (p) => totalRoundsPlayed > 0 && wonHandsCount[p] === totalRoundsPlayed
+  );
+
   // Generar el contenido del podio
   podiumContent.innerHTML = "";
+
+  // Si hay puntaje perfecto, disparar confeti y mostrar tarjeta destacada
+  if (perfectPlayers.length > 0) {
+    startConfetti();
+
+    const perfectCard = document.createElement("div");
+    perfectCard.className = "perfect-score-card";
+
+    const header = document.createElement("div");
+    header.className = "perfect-score-header";
+    header.innerText = "👑 ¡PUNTAJE PERFECTO! 👑";
+
+    const names = document.createElement("div");
+    names.className = "perfect-score-names";
+    names.innerText = perfectPlayers.join(", ");
+
+    const desc = document.createElement("p");
+    desc.className = "perfect-score-desc";
+    const manosTexto =
+      totalRoundsPlayed === 1
+        ? "la única mano"
+        : `las ${totalRoundsPlayed} manos`;
+    desc.innerText = `¡Partida impecable! Ganó ${manosTexto} sin errar una sola apuesta. ¡Felicitaciones crack! 🏆`;
+
+    perfectCard.appendChild(header);
+    perfectCard.appendChild(names);
+    perfectCard.appendChild(desc);
+    podiumContent.appendChild(perfectCard);
+
+    const sectionTitle = document.createElement("div");
+    sectionTitle.className = "podium-section-title";
+    sectionTitle.innerText = "Tabla de posiciones";
+    podiumContent.appendChild(sectionTitle);
+  }
+
+  // Listado de jugadores con medallas y estados
+  const medals = ["🥇", "🥈", "🥉"];
   sortedPlayers.forEach((player, index) => {
     const isRat = maxZeroBets > 0 && zeroBetsCount[player] === maxZeroBets;
     const ratEmoji = isRat ? " 🐀" : "";
-    
+    const isPerfect = perfectPlayers.includes(player);
+    const crownEmoji = isPerfect ? " 👑" : "";
+    const positionLabel = medals[index] || `${index + 1}.`;
+
     const playerDiv = document.createElement("div");
-    playerDiv.innerText = `${index + 1}. ${player}${ratEmoji} (${playerPoints[player]} puntos)`;
+    playerDiv.className = `podium-item ${
+      isPerfect ? "podium-perfect" : index === 0 ? "podium-first" : ""
+    }`;
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "podium-player-name";
+    nameSpan.innerText = `${positionLabel} ${player}${crownEmoji}${ratEmoji}`;
+
+    const scoreSpan = document.createElement("span");
+    scoreSpan.className = "podium-player-score";
+    scoreSpan.innerText = `${playerPoints[player]} pts`;
+
+    playerDiv.appendChild(nameSpan);
+    playerDiv.appendChild(scoreSpan);
     podiumContent.appendChild(playerDiv);
   });
 
@@ -546,6 +1010,7 @@ function showPodium() {
 }
 
 function closePodiumModal() {
+  stopConfetti();
   document.getElementById("podiumModal").style.display = "none";
 }
 
@@ -597,56 +1062,65 @@ function applyCorrection() {
   if (!isNaN(correctionPoints)) {
     playerPoints[selectedPlayer] += correctionPoints;
     updateTableHeader(); // Actualiza la cabecera con los nuevos puntos
-    alert(
+    showAlert(
       `Se han ${correctionPoints >= 0 ? "sumado" : "restado"} ${Math.abs(
         correctionPoints
-      )} puntos a ${selectedPlayer}.`
+      )} puntos a ${selectedPlayer}.`,
+      () => {
+        closeCorrectionModal();
+      }
     );
-    closeCorrectionModal();
   } else {
-    alert("Por favor, ingrese un valor numérico válido.");
+    showAlert("Por favor, ingrese un valor numérico válido.");
   }
 }
 
 function resetGame() {
-  if (
-    confirm(
-      "¿Vas a reiniciar la partida? ¿Ya terminó la anterior o andás cagoneando?"
-    )
-  ) {
-    // Limpiar variables
-    players = [];
-    rounds = 0;
-    currentRound = 1;
-    currentBettorIndex = 0;
-    currentRoundBets = [];
-    currentRoundResults = [];
-    tableRows = [];
-    playerPoints = {};
-    lastDealerIndex = -1;
-    secondHalfDealerOffset = 0;
-    gameResults = [];
+  showConfirm(
+    "¿Vas a reiniciar la partida? ¿Ya terminó la anterior o andás cagoneando?",
+    () => {
+      stopConfetti();
+      // Limpiar variables
+      players = [];
+      rounds = 0;
+      currentRound = 1;
+      currentBettorIndex = 0;
+      currentRoundBets = [];
+      currentRoundResults = [];
+      currentRoundLosers = [];
+      currentRoundLoserScores = {};
+      tableRows = [];
+      playerPoints = {};
+      lastDealerIndex = -1;
+      secondHalfDealerOffset = 0;
+      gameResults = [];
 
-    // Limpiar almacenamiento local
-    localStorage.removeItem("players");
-    localStorage.removeItem("rounds");
-    localStorage.removeItem("gameResults");
+      // Limpiar almacenamiento local
+      localStorage.removeItem("players");
+      localStorage.removeItem("rounds");
+      localStorage.removeItem("gameResults");
 
-    // Resetear la interfaz
-    document.getElementById("selectedPlayers").innerHTML = "";
-    document.getElementById("playersHeader").innerHTML = "";
-    document.getElementById("gameRounds").innerHTML = "";
-    document.getElementById("mainTableContainer").classList.add("hidden");
-    document.getElementById("correctButton").classList.add("hidden");
+      // Resetear la interfaz
+      document.getElementById("selectedPlayers").innerHTML = "";
+      document.getElementById("playersHeader").innerHTML = "";
+      document.getElementById("gameRounds").innerHTML = "";
+      document.getElementById("mainTableContainer").classList.add("hidden");
+      document.getElementById("correctButton").classList.add("hidden");
+      document.getElementById("resetButton").classList.add("hidden");
 
-    const playerButtons = document.querySelectorAll("#playerButtons button");
-    playerButtons.forEach((button) => {
-      button.disabled = false;
-    });
+      setPlayerMode("classic");
 
-    // Volver a mostrar la pantalla de bienvenida
-    showWelcomeScreen();
-  }
+      // Volver a mostrar la pantalla de bienvenida
+      showWelcomeScreen();
+    },
+    null,
+    {
+      title: "¿Reiniciar partida?",
+      confirmText: "Sí, reiniciar",
+      cancelText: "Cancelar",
+      icon: "⚠️"
+    }
+  );
 }
 
 // Evento para detectar el intento de cerrar o recargar la página
