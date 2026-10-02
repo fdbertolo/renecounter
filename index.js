@@ -78,6 +78,7 @@ function showConfirm(message, onConfirm, onCancel, options = {}) {
     const customIcon = options.icon || "❓";
     const confirmText = options.confirmText || "Confirmar";
     const cancelText = options.cancelText || "Cancelar";
+    const confirmClass = options.confirmClass ? ` ${options.confirmClass}` : " danger";
 
     if (!modal) {
       const res = nativeConfirm(message);
@@ -102,7 +103,7 @@ function showConfirm(message, onConfirm, onCancel, options = {}) {
     };
 
     const confirmBtn = document.createElement("button");
-    confirmBtn.className = "custom-dialog-btn danger";
+    confirmBtn.className = `custom-dialog-btn${confirmClass}`;
     confirmBtn.innerText = confirmText;
     confirmBtn.onclick = () => {
       modal.style.display = "none";
@@ -122,13 +123,54 @@ window.alert = function (message) {
   showAlert(message);
 };
 
-// Al cargar la página
+// Al cargar o recargar la página (compatible con iPhone / Safari)
 document.addEventListener("DOMContentLoaded", (event) => {
-  const storedGameResults = localStorage.getItem("gameResults");
-  if (storedGameResults) {
-    gameResults = JSON.parse(storedGameResults);
-  }
   renderPlayerButtons();
+
+  const savedGameActive = localStorage.getItem("gameActive");
+  const savedPlayers = localStorage.getItem("players");
+  const savedRounds = localStorage.getItem("rounds");
+
+  if (savedGameActive === "true" && savedPlayers && savedRounds) {
+    let parsedPlayers = [];
+    let parsedRounds = 0;
+    try {
+      parsedPlayers = JSON.parse(savedPlayers);
+      parsedRounds = parseInt(savedRounds, 10);
+    } catch (e) {}
+
+    if (Array.isArray(parsedPlayers) && parsedPlayers.length > 0 && parsedRounds > 0) {
+      const storedGameResults = localStorage.getItem("gameResults");
+      const parsedResults = storedGameResults ? JSON.parse(storedGameResults) : [];
+      const totalRounds = parsedRounds * 2;
+      const nextRound = Math.min(parsedResults.length + 1, totalRounds);
+
+      // Ocultar bienvenida mientras el usuario decide en el modal
+      document.getElementById("welcomeScreen").style.display = "none";
+
+      // Alerta modal in-app al recargar
+      showConfirm(
+        `Se recargó la página mientras había una partida en juego.\n\n• Ronda: ${nextRound} de ${totalRounds}\n• Jugadores: ${parsedPlayers.join(", ")}\n\n¿Querés reanudar la partida donde la dejaste?`,
+        () => {
+          restoreSavedGame();
+        },
+        () => {
+          clearGameState();
+          renderPlayerButtons();
+          showWelcomeScreen();
+        },
+        {
+          title: "Partida en curso",
+          icon: "🔄",
+          confirmText: "Reanudar partida",
+          cancelText: "Nueva partida",
+          confirmClass: "primary"
+        }
+      );
+      return;
+    }
+  }
+
   showWelcomeScreen();
 });
 
@@ -298,6 +340,9 @@ function selectRounds(selectedRounds) {
     showDealerWarningModal();
   } else {
     secondHalfDealerOffset = 0;
+    localStorage.setItem("secondHalfDealerOffset", "0");
+    localStorage.setItem("gameActive", "true");
+    localStorage.setItem("playerPoints", JSON.stringify(playerPoints));
     document.getElementById("roundsModal").style.display = "none";
     generateGameTable();
   }
@@ -320,6 +365,9 @@ function showDealerWarningModal() {
       btn.innerText = player;
       btn.onclick = () => {
         secondHalfDealerOffset = index;
+        localStorage.setItem("secondHalfDealerOffset", index.toString());
+        localStorage.setItem("gameActive", "true");
+        localStorage.setItem("playerPoints", JSON.stringify(playerPoints));
         modal.style.display = "none";
         generateGameTable();
       };
@@ -332,6 +380,12 @@ function showDealerWarningModal() {
 }
 
 function generateGameTable() {
+  try {
+    if (!history.state || !history.state.inGame) {
+      history.pushState({ inGame: true }, "");
+    }
+  } catch (e) {}
+
   const tableContainer = document.getElementById("mainTableContainer");
   const playersHeader = document.getElementById("playersHeader");
   const gameRounds = document.getElementById("gameRounds");
@@ -775,6 +829,8 @@ function updateTableWithResults() {
 
   // Guardar en localStorage
   localStorage.setItem("gameResults", JSON.stringify(gameResults));
+  localStorage.setItem("playerPoints", JSON.stringify(playerPoints));
+  localStorage.setItem("gameActive", "true");
 
   updateTableHeader();
   updateRoundNumbers(); // Asegurar que los números de ronda se actualicen
@@ -1061,6 +1117,7 @@ function applyCorrection() {
 
   if (!isNaN(correctionPoints)) {
     playerPoints[selectedPlayer] += correctionPoints;
+    localStorage.setItem("playerPoints", JSON.stringify(playerPoints));
     updateTableHeader(); // Actualiza la cabecera con los nuevos puntos
     showAlert(
       `Se han ${correctionPoints >= 0 ? "sumado" : "restado"} ${Math.abs(
@@ -1075,42 +1132,127 @@ function applyCorrection() {
   }
 }
 
+function clearGameState() {
+  stopConfetti();
+  // Limpiar variables
+  players = [];
+  rounds = 0;
+  currentRound = 1;
+  currentBettorIndex = 0;
+  currentRoundBets = [];
+  currentRoundResults = [];
+  currentRoundLosers = [];
+  currentRoundLoserScores = {};
+  tableRows = [];
+  playerPoints = {};
+  lastDealerIndex = -1;
+  secondHalfDealerOffset = 0;
+  gameResults = [];
+
+  // Limpiar almacenamiento local
+  localStorage.removeItem("players");
+  localStorage.removeItem("rounds");
+  localStorage.removeItem("secondHalfDealerOffset");
+  localStorage.removeItem("gameResults");
+  localStorage.removeItem("playerPoints");
+  localStorage.removeItem("gameActive");
+
+  // Resetear la interfaz
+  document.getElementById("selectedPlayers").innerHTML = "";
+  document.getElementById("playersHeader").innerHTML = "";
+  document.getElementById("gameRounds").innerHTML = "";
+  document.getElementById("mainTableContainer").classList.add("hidden");
+  document.getElementById("correctButton").classList.add("hidden");
+  document.getElementById("resetButton").classList.add("hidden");
+
+  setPlayerMode("classic");
+}
+
+function restoreSavedGame() {
+  try {
+    players = JSON.parse(localStorage.getItem("players") || "[]");
+    rounds = parseInt(localStorage.getItem("rounds") || "0", 10);
+    secondHalfDealerOffset = parseInt(localStorage.getItem("secondHalfDealerOffset") || "0", 10);
+    const storedGameResults = localStorage.getItem("gameResults");
+    gameResults = storedGameResults ? JSON.parse(storedGameResults) : [];
+
+    // Inicializar puntos en 0
+    playerPoints = {};
+    players.forEach((p) => {
+      playerPoints[p] = 0;
+    });
+
+    // Ocultar modales y pantallas previas
+    document.getElementById("welcomeScreen").style.display = "none";
+    document.getElementById("playersModal").style.display = "none";
+    document.getElementById("roundsModal").style.display = "none";
+    document.getElementById("dealerWarningModal").style.display = "none";
+    document.getElementById("podiumModal").style.display = "none";
+
+    // Generar la tabla de juego limpia
+    generateGameTable();
+
+    // Reconstruir rondas completadas
+    gameResults.forEach((roundData, roundIndex) => {
+      const row = tableRows[roundIndex];
+      if (!row) return;
+
+      roundData.results.forEach((res) => {
+        const playerIndex = players.indexOf(res.player);
+        if (playerIndex === -1) return;
+
+        const betCellIndex = playerIndex * 2;
+        const resultCellIndex = betCellIndex + 1;
+
+        row[betCellIndex].innerText = res.bet;
+
+        const prevPoints = playerPoints[res.player];
+        let roundPoints = 0;
+        if (res.result === 0) {
+          roundPoints = 10 + res.bet;
+          row[resultCellIndex].innerHTML = `<span class="score-accum">${prevPoints}</span><span class="score-delta positive">+${roundPoints}</span>`;
+          playerPoints[res.player] += roundPoints;
+        } else {
+          roundPoints = res.result;
+          row[resultCellIndex].innerHTML = `<span class="score-accum">${prevPoints}</span><span class="score-delta negative">${roundPoints}</span>`;
+          playerPoints[res.player] += roundPoints;
+        }
+      });
+    });
+
+    // Restaurar puntos guardados si existieron correcciones manuales
+    const savedPlayerPoints = localStorage.getItem("playerPoints");
+    if (savedPlayerPoints) {
+      try {
+        const parsedPoints = JSON.parse(savedPlayerPoints);
+        if (parsedPoints && typeof parsedPoints === "object") {
+          playerPoints = parsedPoints;
+        }
+      } catch (e) {}
+    }
+
+    currentRound = gameResults.length + 1;
+    updateTableHeader();
+    updateRoundNumbers();
+    showOnlyFirstShortButton();
+
+    const totalRounds = rounds * 2;
+    if (currentRound > totalRounds) {
+      showPodium();
+    }
+  } catch (err) {
+    console.error("Error al restaurar partida guardada:", err);
+    showAlert("No se pudo restaurar la partida anterior. Se iniciará una nueva.");
+    clearGameState();
+    showWelcomeScreen();
+  }
+}
+
 function resetGame() {
   showConfirm(
     "¿Vas a reiniciar la partida? ¿Ya terminó la anterior o andás cagoneando?",
     () => {
-      stopConfetti();
-      // Limpiar variables
-      players = [];
-      rounds = 0;
-      currentRound = 1;
-      currentBettorIndex = 0;
-      currentRoundBets = [];
-      currentRoundResults = [];
-      currentRoundLosers = [];
-      currentRoundLoserScores = {};
-      tableRows = [];
-      playerPoints = {};
-      lastDealerIndex = -1;
-      secondHalfDealerOffset = 0;
-      gameResults = [];
-
-      // Limpiar almacenamiento local
-      localStorage.removeItem("players");
-      localStorage.removeItem("rounds");
-      localStorage.removeItem("gameResults");
-
-      // Resetear la interfaz
-      document.getElementById("selectedPlayers").innerHTML = "";
-      document.getElementById("playersHeader").innerHTML = "";
-      document.getElementById("gameRounds").innerHTML = "";
-      document.getElementById("mainTableContainer").classList.add("hidden");
-      document.getElementById("correctButton").classList.add("hidden");
-      document.getElementById("resetButton").classList.add("hidden");
-
-      setPlayerMode("classic");
-
-      // Volver a mostrar la pantalla de bienvenida
+      clearGameState();
       showWelcomeScreen();
     },
     null,
@@ -1123,16 +1265,38 @@ function resetGame() {
   );
 }
 
-// Evento para detectar el intento de cerrar o recargar la página
+// Evento para detectar el intento de cerrar o recargar la página en navegadores compatibles (Desktop)
 window.addEventListener("beforeunload", (event) => {
-  // Mensaje de advertencia
-  const warningMessage =
-    "¿Estás seguro de que quieres salir? Se perderán los datos no guardados.";
+  if (players.length > 0 && rounds > 0 && localStorage.getItem("gameActive") === "true") {
+    const warningMessage =
+      "¿Estás seguro de que quieres salir? Se perderán los datos no guardados.";
+    event.preventDefault();
+    event.returnValue = warningMessage;
+    return warningMessage;
+  }
+});
 
-  // Establece el mensaje de advertencia
-  event.preventDefault();
-  event.returnValue = warningMessage;
-  return warningMessage;
+// Manejo de navegación "Atrás" (gesto en iPhone / Safari) con diálogo in-app
+window.addEventListener("popstate", () => {
+  if (players.length > 0 && rounds > 0 && localStorage.getItem("gameActive") === "true") {
+    try {
+      history.pushState({ inGame: true }, "");
+    } catch (e) {}
+    showConfirm(
+      "¿Querés salir de la partida en curso?",
+      () => {
+        clearGameState();
+        showWelcomeScreen();
+      },
+      null,
+      {
+        title: "Salir de la partida",
+        confirmText: "Salir",
+        cancelText: "Seguir jugando",
+        icon: "⚠️"
+      }
+    );
+  }
 });
 
 function showOnlyFirstShortButton() {

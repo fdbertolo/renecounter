@@ -19,11 +19,13 @@ html {
   font-family: "Manrope", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: contain;
 }
 
 body {
   text-align: center;
   margin: 0;
+  overscroll-behavior-y: contain;
 }
 
 * {
@@ -670,6 +672,15 @@ td.round {
 .custom-dialog-btn:hover {
   background: var(--btn-hover);
   transform: translateY(-1px);
+}
+
+.custom-dialog-btn.primary {
+  background: var(--btn-bg);
+  color: var(--bg-dark);
+}
+
+.custom-dialog-btn.primary:hover {
+  background: var(--btn-hover);
 }
 
 .custom-dialog-btn.secondary {
