@@ -414,8 +414,9 @@ function generateGameTable() {
   showOnlyFirstShortButton();
   tableContainer.classList.remove("hidden");
 
-  // Mostrar el botón "Corregir" cuando se genera la tabla
+  // Mostrar los botones cuando se genera la tabla
   document.getElementById("correctButton").classList.remove("hidden");
+  document.getElementById("historyButton").classList.remove("hidden");
   document.getElementById("resetButton").classList.remove("hidden");
 }
 
@@ -966,6 +967,9 @@ function showPodium() {
     return 0;
   });
 
+  // Guardar la partida en el historial una sola vez
+  saveCurrentGameToHistory(sortedPlayers);
+
   // Calcular cantidad de veces que cada jugador apostó 0 y manos ganadas (result === 0)
   const zeroBetsCount = {};
   const wonHandsCount = {};
@@ -1086,50 +1090,447 @@ function updateTableHeader() {
   });
 }
 
+let tempCorrectionPoints = 0;
+let initialPlayerPoints = 0;
+
 function showCorrectionModal() {
-  const correctionPlayerSelect = document.getElementById(
-    "correctionPlayerSelect"
-  );
+  const correctionPlayerSelect = document.getElementById("correctionPlayerSelect");
+  if (!correctionPlayerSelect) return;
   correctionPlayerSelect.innerHTML = "";
 
   players.forEach((player) => {
     const option = document.createElement("option");
     option.value = player;
-    option.innerText = player;
+    option.innerText = `${player} (${playerPoints[player] || 0} pts)`;
     correctionPlayerSelect.appendChild(option);
   });
 
-  document.getElementById("correctionModal").style.display = "flex";
-  document.getElementById("correctionModal").style.alignItems = "center";
+  if (players.length > 0) {
+    onCorrectionPlayerChange();
+  }
+
+  const modal = document.getElementById("correctionModal");
+  modal.style.display = "flex";
+  modal.style.alignItems = "center";
+}
+
+function onCorrectionPlayerChange() {
+  const select = document.getElementById("correctionPlayerSelect");
+  if (!select) return;
+  const selectedPlayer = select.value;
+  initialPlayerPoints = (playerPoints && playerPoints[selectedPlayer] !== undefined)
+    ? playerPoints[selectedPlayer]
+    : 0;
+  tempCorrectionPoints = initialPlayerPoints;
+  updateCorrectionDisplay();
+}
+
+function adjustCorrectionPoints(delta) {
+  tempCorrectionPoints += delta;
+  updateCorrectionDisplay();
+}
+
+function updateCorrectionDisplay() {
+  const valSpan = document.getElementById("correctionCurrentValue");
+  const deltaSpan = document.getElementById("correctionDeltaDisplay");
+  if (!valSpan || !deltaSpan) return;
+
+  valSpan.innerText = tempCorrectionPoints;
+
+  const diff = tempCorrectionPoints - initialPlayerPoints;
+  if (diff > 0) {
+    deltaSpan.innerHTML = `<span class="delta-positive">(+${diff})</span>`;
+  } else if (diff < 0) {
+    deltaSpan.innerHTML = `<span class="delta-negative">(${diff})</span>`;
+  } else {
+    deltaSpan.innerHTML = `<span style="color: var(--text-muted); font-size: 0.8rem;">(sin cambios)</span>`;
+  }
 }
 
 function closeCorrectionModal() {
-  document.getElementById("correctionModal").style.display = "none";
+  const modal = document.getElementById("correctionModal");
+  if (modal) modal.style.display = "none";
 }
 
-function applyCorrection() {
-  const selectedPlayer = document.getElementById("correctionPlayerSelect")
-    .value;
-  const correctionPoints = parseInt(
-    document.getElementById("correctionPoints").value,
-    10
-  );
+function confirmCorrection() {
+  const select = document.getElementById("correctionPlayerSelect");
+  if (!select) return;
+  const selectedPlayer = select.value;
+  const diff = tempCorrectionPoints - initialPlayerPoints;
 
-  if (!isNaN(correctionPoints)) {
-    playerPoints[selectedPlayer] += correctionPoints;
-    localStorage.setItem("playerPoints", JSON.stringify(playerPoints));
-    updateTableHeader(); // Actualiza la cabecera con los nuevos puntos
-    showAlert(
-      `Se han ${correctionPoints >= 0 ? "sumado" : "restado"} ${Math.abs(
-        correctionPoints
-      )} puntos a ${selectedPlayer}.`,
-      () => {
-        closeCorrectionModal();
-      }
-    );
-  } else {
-    showAlert("Por favor, ingrese un valor numérico válido.");
+  if (diff === 0) {
+    closeCorrectionModal();
+    return;
   }
+
+  playerPoints[selectedPlayer] = tempCorrectionPoints;
+  localStorage.setItem("playerPoints", JSON.stringify(playerPoints));
+  updateTableHeader();
+
+  const changeText = diff > 0 ? `+${diff}` : `${diff}`;
+  showAlert(
+    `Se actualizó el puntaje de ${selectedPlayer} a ${tempCorrectionPoints} puntos (${changeText}).`,
+    () => {
+      closeCorrectionModal();
+    }
+  );
+}
+
+// Historial de Partidas
+let currentGameSavedToHistory = localStorage.getItem("currentGameSavedToHistory") === "true";
+let currentHistoryView = "chart"; // "chart" | "list"
+let currentChartMetric = "wins"; // "wins" | "points"
+const CHART_PALETTE = [
+  "#2dd4bf", // Teal
+  "#fbbf24", // Amber / Gold
+  "#f43f5e", // Rose
+  "#a855f7", // Purple
+  "#38bdf8", // Sky blue
+  "#34d399", // Emerald
+  "#f97316", // Orange
+  "#818cf8", // Indigo
+  "#e879f9", // Fuchsia
+  "#94a3b8"  // Slate
+];
+
+function getGameHistory() {
+  try {
+    const raw = localStorage.getItem("gameHistory");
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveCurrentGameToHistory(sortedPlayers) {
+  if (currentGameSavedToHistory) return;
+  if (!players || players.length === 0 || !gameResults || gameResults.length === 0) return;
+
+  const maxPoints = playerPoints[sortedPlayers[0]];
+  const winners = sortedPlayers.filter((p) => playerPoints[p] === maxPoints);
+
+  const now = new Date();
+  const dateFormatted =
+    now.toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric"
+    }) +
+    " " +
+    now.toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+
+  const historyItem = {
+    id: "game_" + Date.now(),
+    date: dateFormatted,
+    rounds: rounds,
+    totalRounds: rounds * 2,
+    players: [...players],
+    points: { ...playerPoints },
+    winners: winners
+  };
+
+  const history = getGameHistory();
+  history.unshift(historyItem);
+  localStorage.setItem("gameHistory", JSON.stringify(history));
+
+  currentGameSavedToHistory = true;
+  localStorage.setItem("currentGameSavedToHistory", "true");
+}
+
+function showHistoryModal() {
+  const modal = document.getElementById("historyModal");
+  if (!modal) return;
+
+  modal.style.display = "flex";
+  modal.style.alignItems = "center";
+  updateHistoryModalContent();
+}
+
+function closeHistoryModal() {
+  const modal = document.getElementById("historyModal");
+  if (modal) modal.style.display = "none";
+}
+
+function setHistoryView(view) {
+  currentHistoryView = view;
+  const tabChart = document.getElementById("tabHistoryChart");
+  const tabList = document.getElementById("tabHistoryList");
+  const chartView = document.getElementById("historyChartView");
+  const listView = document.getElementById("historyListView");
+
+  if (view === "chart") {
+    if (tabChart) tabChart.classList.add("active");
+    if (tabList) tabList.classList.remove("active");
+    if (chartView) chartView.classList.remove("hidden");
+    if (listView) listView.classList.add("hidden");
+  } else {
+    if (tabChart) tabChart.classList.remove("active");
+    if (tabList) tabList.classList.add("active");
+    if (chartView) chartView.classList.add("hidden");
+    if (listView) listView.classList.remove("hidden");
+  }
+
+  updateHistoryModalContent();
+}
+
+function setChartMetric(metric) {
+  currentChartMetric = metric;
+  const btnWins = document.getElementById("metricWinsBtn");
+  const btnPoints = document.getElementById("metricPointsBtn");
+
+  if (metric === "wins") {
+    if (btnWins) btnWins.classList.add("active");
+    if (btnPoints) btnPoints.classList.remove("active");
+  } else {
+    if (btnWins) btnWins.classList.remove("active");
+    if (btnPoints) btnPoints.classList.add("active");
+  }
+
+  renderHistoryChart();
+}
+
+function updateHistoryModalContent() {
+  if (currentHistoryView === "chart") {
+    renderHistoryChart();
+  } else {
+    renderHistoryList();
+  }
+}
+
+function renderHistoryChart() {
+  const canvas = document.getElementById("historyPieCanvas");
+  const legend = document.getElementById("chartLegend");
+  if (!canvas || !legend) return;
+
+  const history = getGameHistory();
+  const ctx = canvas.getContext("2d");
+
+  const dpr = window.devicePixelRatio || 1;
+  const size = 240;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width = `${size}px`;
+  canvas.style.height = `${size}px`;
+  if (ctx.resetTransform) ctx.resetTransform();
+  else ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, size, size);
+
+  legend.innerHTML = "";
+
+  if (history.length === 0) {
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size * 0.38, 0, Math.PI * 2);
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 18;
+    ctx.stroke();
+
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "600 13px Manrope, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Sin datos", size / 2, size / 2);
+
+    legend.innerHTML = `<div class="empty-history-box" style="grid-column: 1 / -1;">No hay partidas registradas aún.<br>Al completar una partida se guardarán las estadísticas automáticamente.</div>`;
+    return;
+  }
+
+  const playerStats = {};
+
+  history.forEach((match) => {
+    if (currentChartMetric === "wins") {
+      if (Array.isArray(match.winners)) {
+        match.winners.forEach((w) => {
+          playerStats[w] = (playerStats[w] || 0) + 1;
+        });
+      }
+    } else {
+      if (match.points) {
+        Object.entries(match.points).forEach(([player, pts]) => {
+          playerStats[player] = (playerStats[player] || 0) + pts;
+        });
+      }
+    }
+  });
+
+  const playerEntries = Object.entries(playerStats)
+    .filter(([_, val]) => val > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  const totalValue = playerEntries.reduce((sum, [_, val]) => sum + val, 0);
+
+  if (totalValue === 0) {
+    ctx.fillStyle = "#94a3b8";
+    ctx.font = "600 13px Manrope, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Sin valores > 0", size / 2, size / 2);
+    legend.innerHTML = `<div class="empty-history-box" style="grid-column: 1 / -1;">No hay puntajes positivos acumulados para graficar.</div>`;
+    return;
+  }
+
+  const centerX = size / 2;
+  const centerY = size / 2;
+  const outerRadius = size * 0.42;
+  const innerRadius = size * 0.25;
+
+  let currentAngle = -Math.PI / 2;
+
+  playerEntries.forEach(([player, val], index) => {
+    const sliceAngle = (val / totalValue) * (Math.PI * 2);
+    const endAngle = currentAngle + sliceAngle;
+    const color = CHART_PALETTE[index % CHART_PALETTE.length];
+
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, outerRadius, currentAngle, endAngle);
+    ctx.arc(centerX, centerY, innerRadius, endAngle, currentAngle, true);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    ctx.strokeStyle = "#1e293b";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    currentAngle = endAngle;
+
+    const percent = Math.round((val / totalValue) * 100);
+    const unitLabel = currentChartMetric === "wins" ? (val === 1 ? "victoria" : "victorias") : "pts";
+
+    const item = document.createElement("div");
+    item.className = "chart-legend-item";
+    item.innerHTML = `
+      <div class="chart-legend-color" style="background-color: ${color};"></div>
+      <span class="chart-legend-name" title="${player}">${player}</span>
+      <span class="chart-legend-val">${val} ${unitLabel} <span style="font-weight: normal; opacity: 0.7;">(${percent}%)</span></span>
+    `;
+    legend.appendChild(item);
+  });
+
+  ctx.fillStyle = "#f8fafc";
+  ctx.font = "800 16px Manrope, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(totalValue, centerX, centerY - 6);
+
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "600 10px Manrope, sans-serif";
+  ctx.fillText(currentChartMetric === "wins" ? "VICTORIAS" : "PUNTOS", centerX, centerY + 12);
+}
+
+function renderHistoryList() {
+  const container = document.getElementById("historyMatchesList");
+  if (!container) return;
+
+  const history = getGameHistory();
+  container.innerHTML = "";
+
+  if (history.length === 0) {
+    container.innerHTML = `<div class="empty-history-box">No hay partidas registradas aún.<br>Cuando termines una partida se listará aquí.</div>`;
+    return;
+  }
+
+  history.forEach((match, index) => {
+    const card = document.createElement("div");
+    card.className = "history-match-card";
+
+    const winnersList = Array.isArray(match.winners) ? match.winners : [];
+    const winnersText = winnersList.length > 0 ? winnersList.join(", ") : "Sin ganador";
+
+    const pointsMap = match.points || {};
+    const sortedPlayers = Object.keys(pointsMap).sort((a, b) => (pointsMap[b] || 0) - (pointsMap[a] || 0));
+
+    let playersChipsHtml = "";
+    sortedPlayers.forEach((p) => {
+      const isWinner = winnersList.includes(p);
+      const pts = pointsMap[p];
+      playersChipsHtml += `<span class="history-player-chip ${isWinner ? "is-winner" : ""}">${isWinner ? "👑 " : ""}${p}: ${pts} pts</span>`;
+    });
+
+    const matchNumber = history.length - index;
+    const matchId = match.id || `match_${index}`;
+
+    card.innerHTML = `
+      <div class="history-match-header">
+        <div class="history-match-info">
+          <span><b>Partida #${matchNumber}</b> • ${match.date || ""}</span>
+          <span class="history-match-rounds">${match.rounds || "?"} rondas (${match.totalRounds || "?"} manos)</span>
+        </div>
+        <button class="delete-match-btn" title="Eliminar partida #${matchNumber}" aria-label="Eliminar partida">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+        </button>
+      </div>
+      <div class="history-match-winner">
+        <span>🏆 Ganador:</span> <b>${winnersText}</b>
+      </div>
+      <div class="history-match-players">
+        ${playersChipsHtml}
+      </div>
+    `;
+
+    const deleteBtn = card.querySelector(".delete-match-btn");
+    if (deleteBtn) {
+      deleteBtn.onclick = () => promptDeleteMatch(matchId, matchNumber);
+    }
+
+    container.appendChild(card);
+  });
+}
+
+function promptDeleteMatch(matchId, matchNumber) {
+  showConfirm(
+    `¿Querés eliminar la Partida #${matchNumber} del historial? Esta acción no se puede deshacer.`,
+    () => {
+      deleteMatchFromHistory(matchId);
+    },
+    null,
+    {
+      title: "Eliminar partida",
+      confirmText: "Sí, eliminar",
+      cancelText: "Cancelar",
+      icon: "🗑️"
+    }
+  );
+}
+
+function deleteMatchFromHistory(matchId) {
+  let history = getGameHistory();
+  history = history.filter((m, idx) => (m.id || `match_${idx}`) !== matchId);
+  localStorage.setItem("gameHistory", JSON.stringify(history));
+  updateHistoryModalContent();
+  showAlert("La partida ha sido eliminada del historial.");
+}
+
+function promptClearHistory() {
+  const history = getGameHistory();
+  if (history.length === 0) {
+    showAlert("El historial ya está vacío.");
+    return;
+  }
+
+  showConfirm(
+    "¿Estás seguro de que querés borrar todo el historial de partidas guardadas? Esta acción no se puede deshacer.",
+    () => {
+      localStorage.removeItem("gameHistory");
+      updateHistoryModalContent();
+      showAlert("El historial de partidas se ha borrado correctamente.");
+    },
+    null,
+    {
+      title: "Borrar Historial",
+      confirmText: "Sí, borrar",
+      cancelText: "Cancelar",
+      icon: "🗑️"
+    }
+  );
 }
 
 function clearGameState() {
@@ -1148,6 +1549,7 @@ function clearGameState() {
   lastDealerIndex = -1;
   secondHalfDealerOffset = 0;
   gameResults = [];
+  currentGameSavedToHistory = false;
 
   // Limpiar almacenamiento local
   localStorage.removeItem("players");
@@ -1156,6 +1558,7 @@ function clearGameState() {
   localStorage.removeItem("gameResults");
   localStorage.removeItem("playerPoints");
   localStorage.removeItem("gameActive");
+  localStorage.removeItem("currentGameSavedToHistory");
 
   // Resetear la interfaz
   document.getElementById("selectedPlayers").innerHTML = "";
@@ -1163,6 +1566,7 @@ function clearGameState() {
   document.getElementById("gameRounds").innerHTML = "";
   document.getElementById("mainTableContainer").classList.add("hidden");
   document.getElementById("correctButton").classList.add("hidden");
+  document.getElementById("historyButton").classList.add("hidden");
   document.getElementById("resetButton").classList.add("hidden");
 
   setPlayerMode("classic");

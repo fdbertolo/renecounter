@@ -68,8 +68,9 @@
       <tbody id="gameRounds"></tbody>
     </table>
   </div>
-  <div class="flex">
+  <div class="flex action-buttons-container">
     <button id="correctButton" class="hidden" onclick="showCorrectionModal()">Corregir</button>
+    <button id="historyButton" class="hidden" onclick="showHistoryModal()">Historial</button>
     <button id="resetButton" class="hidden" onclick="resetGame()">Reiniciar</button>
   </div>
   <div id="bettingModal" class="modal">
@@ -107,17 +108,58 @@
   </div>
 
   <div id="correctionModal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content correction-modal-content">
       <h2>Corregir Puntaje</h2>
-      <div class="flex">
-        <select id="correctionPlayerSelect">
+      <div class="correction-player-box">
+        <label for="correctionPlayerSelect">Jugador:</label>
+        <select id="correctionPlayerSelect" onchange="onCorrectionPlayerChange()">
           <!-- Opciones generadas dinámicamente -->
         </select>
-        <input id="correctionPoints" placeholder="Puntos">
       </div>
-      <div class="flex">
-        <button onclick="applyCorrection()">Aplicar</button>
-        <button onclick="closeCorrectionModal()">Cerrar</button>
+      <div class="stepper-container">
+        <button type="button" class="stepper-btn minus" onclick="adjustCorrectionPoints(-1)" aria-label="Restar">−</button>
+        <div class="stepper-display">
+          <span id="correctionCurrentValue" class="stepper-value">0</span>
+          <span class="stepper-label">puntos</span>
+          <span id="correctionDeltaDisplay" class="stepper-delta"></span>
+        </div>
+        <button type="button" class="stepper-btn plus" onclick="adjustCorrectionPoints(1)" aria-label="Sumar">+</button>
+      </div>
+      <div class="flex stepper-actions">
+        <button class="primary" onclick="confirmCorrection()">OK</button>
+        <button class="secondary" onclick="closeCorrectionModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="historyModal" class="modal history-modal">
+    <div class="modal-content history-modal-content">
+      <button class="close-x-btn" onclick="closeHistoryModal()" aria-label="Cerrar">&times;</button>
+      <h2>Historial de Partidas</h2>
+      
+      <div class="mode-tabs-container history-tabs">
+        <button id="tabHistoryChart" class="mode-tab-btn active" onclick="setHistoryView('chart')">Gráfico</button>
+        <button id="tabHistoryList" class="mode-tab-btn" onclick="setHistoryView('list')">Partidas</button>
+      </div>
+
+      <div id="historyChartView" class="history-view">
+        <div class="metric-selector-container">
+          <button id="metricWinsBtn" class="metric-tab-btn active" onclick="setChartMetric('wins')">🏆 Victorias</button>
+          <button id="metricPointsBtn" class="metric-tab-btn" onclick="setChartMetric('points')">⭐ Puntos Totales</button>
+        </div>
+        <div id="chartContainer" class="chart-container">
+          <canvas id="historyPieCanvas" width="240" height="240"></canvas>
+          <div id="chartLegend" class="chart-legend"></div>
+        </div>
+      </div>
+
+      <div id="historyListView" class="history-view hidden">
+        <div id="historyMatchesList" class="history-matches-list"></div>
+      </div>
+
+      <div class="flex history-footer-actions">
+        <button class="danger-outline-btn" onclick="promptClearHistory()">Borrar Historial</button>
+        <button onclick="closeHistoryModal()">Cerrar</button>
       </div>
     </div>
   </div>
