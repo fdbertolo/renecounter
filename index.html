@@ -135,14 +135,21 @@
   <div id="historyModal" class="modal history-modal">
     <div class="modal-content history-modal-content">
       <button class="close-x-btn" onclick="closeHistoryModal()" aria-label="Cerrar">&times;</button>
-      <h2>Historial de Partidas</h2>
+      <h2>Historial y Estadísticas</h2>
       
       <div class="mode-tabs-container history-tabs">
-        <button id="tabHistoryChart" class="mode-tab-btn active" onclick="setHistoryView('chart')">Gráfico</button>
+        <button id="tabHistoryPodium" class="mode-tab-btn active" onclick="setHistoryView('podium')">Medallero</button>
+        <button id="tabHistoryChart" class="mode-tab-btn" onclick="setHistoryView('chart')">Gráfico</button>
         <button id="tabHistoryList" class="mode-tab-btn" onclick="setHistoryView('list')">Partidas</button>
       </div>
 
-      <div id="historyChartView" class="history-view">
+      <!-- Vista de Medallero (Top 3 Campeones y Top 3 Ratas) -->
+      <div id="historyPodiumView" class="history-view">
+        <div id="podiumViewContent"></div>
+      </div>
+
+      <!-- Vista de Gráfico de Torta -->
+      <div id="historyChartView" class="history-view hidden">
         <div class="metric-selector-container">
           <button id="metricWinsBtn" class="metric-tab-btn active" onclick="setChartMetric('wins')">🏆 Victorias</button>
           <button id="metricPointsBtn" class="metric-tab-btn" onclick="setChartMetric('points')">⭐ Puntos Totales</button>
@@ -153,6 +160,7 @@
         </div>
       </div>
 
+      <!-- Vista de Listado de Partidas -->
       <div id="historyListView" class="history-view hidden">
         <div id="historyMatchesList" class="history-matches-list"></div>
       </div>

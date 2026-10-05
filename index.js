@@ -340,9 +340,12 @@ function selectRounds(selectedRounds) {
     showDealerWarningModal();
   } else {
     secondHalfDealerOffset = 0;
+    currentGameId = "game_" + Date.now();
+    localStorage.setItem("currentGameId", currentGameId);
     localStorage.setItem("secondHalfDealerOffset", "0");
     localStorage.setItem("gameActive", "true");
     localStorage.setItem("playerPoints", JSON.stringify(playerPoints));
+    syncCurrentGameToHistory(false);
     document.getElementById("roundsModal").style.display = "none";
     generateGameTable();
   }
@@ -365,9 +368,12 @@ function showDealerWarningModal() {
       btn.innerText = player;
       btn.onclick = () => {
         secondHalfDealerOffset = index;
+        currentGameId = "game_" + Date.now();
+        localStorage.setItem("currentGameId", currentGameId);
         localStorage.setItem("secondHalfDealerOffset", index.toString());
         localStorage.setItem("gameActive", "true");
         localStorage.setItem("playerPoints", JSON.stringify(playerPoints));
+        syncCurrentGameToHistory(false);
         modal.style.display = "none";
         generateGameTable();
       };
@@ -634,7 +640,9 @@ function renderLosersSelectionButtons() {
     const isSelected = currentRoundLosers.includes(player);
 
     const btn = document.createElement("button");
-    btn.innerHTML = `${player} <span style="font-size: 11px; opacity: 0.75;">(${playerBet})</span>`;
+    const pts = playerPoints[player] ?? 0;
+    const ptsSign = pts >= 0 ? "+" : "";
+    btn.innerHTML = `${player} <span style="font-size: 11px; opacity: 0.75;">(apostó ${playerBet} · <b>${ptsSign}${pts} pts</b>)</span>`;
     btn.disabled = isSelected;
     btn.onclick = () => {
       if (!currentRoundLosers.includes(player)) {
@@ -832,6 +840,7 @@ function updateTableWithResults() {
   localStorage.setItem("gameResults", JSON.stringify(gameResults));
   localStorage.setItem("playerPoints", JSON.stringify(playerPoints));
   localStorage.setItem("gameActive", "true");
+  syncCurrentGameToHistory(false);
 
   updateTableHeader();
   updateRoundNumbers(); // Asegurar que los números de ronda se actualicen
@@ -967,8 +976,8 @@ function showPodium() {
     return 0;
   });
 
-  // Guardar la partida en el historial una sola vez
-  saveCurrentGameToHistory(sortedPlayers);
+  // Guardar la partida en el historial como finalizada
+  syncCurrentGameToHistory(true);
 
   // Calcular cantidad de veces que cada jugador apostó 0 y manos ganadas (result === 0)
   const zeroBetsCount = {};
@@ -1165,6 +1174,7 @@ function confirmCorrection() {
 
   playerPoints[selectedPlayer] = tempCorrectionPoints;
   localStorage.setItem("playerPoints", JSON.stringify(playerPoints));
+  syncCurrentGameToHistory(false);
   updateTableHeader();
 
   const changeText = diff > 0 ? `+${diff}` : `${diff}`;
@@ -1176,9 +1186,9 @@ function confirmCorrection() {
   );
 }
 
-// Historial de Partidas
-let currentGameSavedToHistory = localStorage.getItem("currentGameSavedToHistory") === "true";
-let currentHistoryView = "chart"; // "chart" | "list"
+// Historial de Partidas y Estadísticas
+let currentGameId = localStorage.getItem("currentGameId") || null;
+let currentHistoryView = "podium"; // "podium" | "chart" | "list"
 let currentChartMetric = "wins"; // "wins" | "points"
 const CHART_PALETTE = [
   "#2dd4bf", // Teal
@@ -1202,42 +1212,114 @@ function getGameHistory() {
   }
 }
 
-function saveCurrentGameToHistory(sortedPlayers) {
-  if (currentGameSavedToHistory) return;
-  if (!players || players.length === 0 || !gameResults || gameResults.length === 0) return;
+function syncCurrentGameToHistory(isFinished = false) {
+  if (!players || players.length === 0 || !rounds) return;
 
-  const maxPoints = playerPoints[sortedPlayers[0]];
-  const winners = sortedPlayers.filter((p) => playerPoints[p] === maxPoints);
+  if (!currentGameId) {
+    currentGameId = localStorage.getItem("currentGameId") || ("game_" + Date.now());
+    localStorage.setItem("currentGameId", currentGameId);
+  }
+
+  let history = getGameHistory();
+  let existingIndex = history.findIndex((m) => m.id === currentGameId);
+
+  const sorted = Object.keys(playerPoints).sort(
+    (a, b) => (playerPoints[b] || 0) - (playerPoints[a] || 0)
+  );
+  const maxPoints = sorted.length > 0 ? playerPoints[sorted[0]] : 0;
+  const winners = isFinished
+    ? sorted.filter((p) => playerPoints[p] === maxPoints)
+    : [];
 
   const now = new Date();
   const dateFormatted =
-    now.toLocaleDateString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric"
-    }) +
-    " " +
-    now.toLocaleTimeString("es-AR", {
-      hour: "2-digit",
-      minute: "2-digit"
-    });
+    existingIndex >= 0 && history[existingIndex].date
+      ? history[existingIndex].date
+      : now.toLocaleDateString("es-AR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric"
+        }) +
+        " " +
+        now.toLocaleTimeString("es-AR", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
 
-  const historyItem = {
-    id: "game_" + Date.now(),
+  const matchData = {
+    id: currentGameId,
     date: dateFormatted,
     rounds: rounds,
     totalRounds: rounds * 2,
+    currentRoundNumber: currentRound,
     players: [...players],
-    points: { ...playerPoints },
+    secondHalfDealerOffset: secondHalfDealerOffset,
+    gameResults: JSON.parse(JSON.stringify(gameResults)),
+    playerPoints: { ...playerPoints },
+    status: isFinished ? "completed" : "in_progress",
     winners: winners
   };
 
-  const history = getGameHistory();
-  history.unshift(historyItem);
-  localStorage.setItem("gameHistory", JSON.stringify(history));
+  if (existingIndex >= 0) {
+    history[existingIndex] = matchData;
+  } else {
+    history.unshift(matchData);
+  }
 
-  currentGameSavedToHistory = true;
-  localStorage.setItem("currentGameSavedToHistory", "true");
+  localStorage.setItem("gameHistory", JSON.stringify(history));
+}
+
+function resumeMatchFromHistory(matchId) {
+  const history = getGameHistory();
+  const match = history.find((m) => (m.id || "") === matchId);
+  if (!match) {
+    showAlert("No se encontró la partida en el historial.");
+    return;
+  }
+
+  const doResume = () => {
+    currentGameId = match.id;
+    localStorage.setItem("currentGameId", currentGameId);
+    localStorage.setItem("gameActive", "true");
+    localStorage.setItem("players", JSON.stringify(match.players || []));
+    localStorage.setItem("rounds", (match.rounds || 5).toString());
+    localStorage.setItem(
+      "secondHalfDealerOffset",
+      (match.secondHalfDealerOffset || 0).toString()
+    );
+    localStorage.setItem("gameResults", JSON.stringify(match.gameResults || []));
+    localStorage.setItem(
+      "playerPoints",
+      JSON.stringify(match.playerPoints || {})
+    );
+
+    restoreSavedGame();
+    closeHistoryModal();
+    showAlert(
+      `Partida reanudada (${(match.players || []).join(", ")}). ¡A jugar!`
+    );
+  };
+
+  if (
+    players.length > 0 &&
+    currentGameId &&
+    currentGameId !== match.id &&
+    localStorage.getItem("gameActive") === "true"
+  ) {
+    showConfirm(
+      "Hay otra partida activa en la mesa. ¿Deseas cargar esta partida del historial?",
+      () => doResume(),
+      null,
+      {
+        title: "Cargar partida",
+        confirmText: "Cargar",
+        cancelText: "Cancelar",
+        icon: "🔄"
+      }
+    );
+  } else {
+    doResume();
+  }
 }
 
 function showHistoryModal() {
@@ -1256,22 +1338,20 @@ function closeHistoryModal() {
 
 function setHistoryView(view) {
   currentHistoryView = view;
+  const tabPodium = document.getElementById("tabHistoryPodium");
   const tabChart = document.getElementById("tabHistoryChart");
   const tabList = document.getElementById("tabHistoryList");
+  const podiumView = document.getElementById("historyPodiumView");
   const chartView = document.getElementById("historyChartView");
   const listView = document.getElementById("historyListView");
 
-  if (view === "chart") {
-    if (tabChart) tabChart.classList.add("active");
-    if (tabList) tabList.classList.remove("active");
-    if (chartView) chartView.classList.remove("hidden");
-    if (listView) listView.classList.add("hidden");
-  } else {
-    if (tabChart) tabChart.classList.remove("active");
-    if (tabList) tabList.classList.add("active");
-    if (chartView) chartView.classList.add("hidden");
-    if (listView) listView.classList.remove("hidden");
-  }
+  if (tabPodium) tabPodium.classList.toggle("active", view === "podium");
+  if (tabChart) tabChart.classList.toggle("active", view === "chart");
+  if (tabList) tabList.classList.toggle("active", view === "list");
+
+  if (podiumView) podiumView.classList.toggle("hidden", view !== "podium");
+  if (chartView) chartView.classList.toggle("hidden", view !== "chart");
+  if (listView) listView.classList.toggle("hidden", view !== "list");
 
   updateHistoryModalContent();
 }
@@ -1293,11 +1373,178 @@ function setChartMetric(metric) {
 }
 
 function updateHistoryModalContent() {
-  if (currentHistoryView === "chart") {
+  if (currentHistoryView === "podium") {
+    renderHistoryPodium();
+  } else if (currentHistoryView === "chart") {
     renderHistoryChart();
   } else {
     renderHistoryList();
   }
+}
+
+function renderHistoryPodium() {
+  const container = document.getElementById("podiumViewContent");
+  if (!container) return;
+
+  const history = getGameHistory();
+
+  if (history.length === 0) {
+    container.innerHTML = `<div class="empty-history-box">No hay partidas registradas aún.<br>Al jugar se registrarán las medallas y las estadísticas aquí.</div>`;
+    return;
+  }
+
+  // 1. Calcular podio de medallas (Victorias en partidas completadas)
+  const winsCount = {};
+  history.forEach((m) => {
+    if (Array.isArray(m.winners) && m.winners.length > 0) {
+      m.winners.forEach((w) => {
+        winsCount[w] = (winsCount[w] || 0) + 1;
+      });
+    }
+  });
+
+  const winnersRanking = Object.entries(winsCount)
+    .sort((a, b) => b[1] - a[1]);
+
+  // 2. Calcular medallero inverso "Rey Rata" (apuestas 0 en todas las partidas)
+  const zeroBetsTotal = {};
+  history.forEach((m) => {
+    if (Array.isArray(m.gameResults)) {
+      m.gameResults.forEach((roundData) => {
+        if (Array.isArray(roundData.results)) {
+          roundData.results.forEach((r) => {
+            if (r.bet === 0) {
+              zeroBetsTotal[r.player] = (zeroBetsTotal[r.player] || 0) + 1;
+            }
+          });
+        }
+      });
+    }
+  });
+
+  const ratRanking = Object.entries(zeroBetsTotal)
+    .filter(([_, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  // Armar Podio Olímpico de Campeones
+  let podiumHtml = "";
+  if (winnersRanking.length === 0) {
+    podiumHtml = `<div class="empty-history-box" style="padding: 14px 0;">Aún no hay partidas finalizadas con ganador registrado.</div>`;
+  } else {
+    const first = winnersRanking[0] || null;
+    const second = winnersRanking[1] || null;
+    const third = winnersRanking[2] || null;
+
+    podiumHtml = `
+      <div class="olympic-podium">
+        <!-- 2do Puesto -->
+        <div class="podium-step second">
+          ${second ? `
+            <div class="podium-step-avatar">🥈</div>
+            <div class="podium-step-name" title="${second[0]}">${second[0]}</div>
+            <div class="podium-step-score">${second[1]} ${second[1] === 1 ? "victoria" : "victorias"}</div>
+            <div class="podium-pillar">2</div>
+          ` : `
+            <div class="podium-step-avatar" style="opacity: 0.3;">🥈</div>
+            <div class="podium-step-score">-</div>
+            <div class="podium-pillar" style="opacity: 0.3;">2</div>
+          `}
+        </div>
+
+        <!-- 1er Puesto -->
+        <div class="podium-step first">
+          ${first ? `
+            <div class="podium-step-avatar">👑🥇</div>
+            <div class="podium-step-name" title="${first[0]}">${first[0]}</div>
+            <div class="podium-step-score">${first[1]} ${first[1] === 1 ? "victoria" : "victorias"}</div>
+            <div class="podium-pillar">1</div>
+          ` : `
+            <div class="podium-step-avatar" style="opacity: 0.3;">🥇</div>
+            <div class="podium-step-score">-</div>
+            <div class="podium-pillar" style="opacity: 0.3;">1</div>
+          `}
+        </div>
+
+        <!-- 3er Puesto -->
+        <div class="podium-step third">
+          ${third ? `
+            <div class="podium-step-avatar">🥉</div>
+            <div class="podium-step-name" title="${third[0]}">${third[0]}</div>
+            <div class="podium-step-score">${third[1]} ${third[1] === 1 ? "victoria" : "victorias"}</div>
+            <div class="podium-pillar">3</div>
+          ` : `
+            <div class="podium-step-avatar" style="opacity: 0.3;">🥉</div>
+            <div class="podium-step-score">-</div>
+            <div class="podium-pillar" style="opacity: 0.3;">3</div>
+          `}
+        </div>
+      </div>
+    `;
+  }
+
+  // Armar Medallero Inverso "Rey Rata"
+  let ratHtml = "";
+  if (ratRanking.length === 0) {
+    ratHtml = `<div class="empty-history-box" style="padding: 10px 0;">🧀 ¡Nadie apostó 0 todavía! No hay ratas en el historial.</div>`;
+  } else {
+    const kingRat = ratRanking[0];
+    const secondRat = ratRanking[1] || null;
+    const thirdRat = ratRanking[2] || null;
+
+    let runnersHtml = "";
+    if (secondRat || thirdRat) {
+      runnersHtml = `
+        <div class="rat-runners-grid">
+          ${secondRat ? `
+            <div class="rat-runner-card">
+              <span class="rat-runner-badge">🥈🐀</span>
+              <div class="rat-runner-info">
+                <span class="rat-runner-name" title="${secondRat[0]}">${secondRat[0]}</span>
+                <span class="rat-runner-stats">${secondRat[1]} veces dijo 0</span>
+              </div>
+            </div>
+          ` : `<div></div>`}
+          ${thirdRat ? `
+            <div class="rat-runner-card">
+              <span class="rat-runner-badge">🥉🐀</span>
+              <div class="rat-runner-info">
+                <span class="rat-runner-name" title="${thirdRat[0]}">${thirdRat[0]}</span>
+                <span class="rat-runner-stats">${thirdRat[1]} veces dijo 0</span>
+              </div>
+            </div>
+          ` : `<div></div>`}
+        </div>
+      `;
+    }
+
+    ratHtml = `
+      <div class="rat-king-card">
+        <div class="rat-king-badge">👑🐀</div>
+        <div class="rat-king-info">
+          <span class="rat-king-title">Gran Rey Rata</span>
+          <span class="rat-king-name">${kingRat[0]}</span>
+          <span class="rat-king-stats">${kingRat[1]} veces apostó 0 en total</span>
+        </div>
+      </div>
+      ${runnersHtml}
+    `;
+  }
+
+  container.innerHTML = `
+    <div class="podium-view-container">
+      <div class="podium-section-block">
+        <div class="podium-section-title">🏆 Podio de Campeones</div>
+        <div class="podium-section-subtitle">Top 3 con más partidas ganadas</div>
+        ${podiumHtml}
+      </div>
+
+      <div class="rat-section-container">
+        <div class="podium-section-title" style="color: #fbbf24;">🐀 Medallero Inverso: Las Más Ratas</div>
+        <div class="podium-section-subtitle">Los que más veces apostaron 0 en todas las partidas</div>
+        ${ratHtml}
+      </div>
+    </div>
+  `;
 }
 
 function renderHistoryChart() {
@@ -1398,7 +1645,12 @@ function renderHistoryChart() {
     currentAngle = endAngle;
 
     const percent = Math.round((val / totalValue) * 100);
-    const unitLabel = currentChartMetric === "wins" ? (val === 1 ? "victoria" : "victorias") : "pts";
+    const unitLabel =
+      currentChartMetric === "wins"
+        ? val === 1
+          ? "victoria"
+          : "victorias"
+        : "pts";
 
     const item = document.createElement("div");
     item.className = "chart-legend-item";
@@ -1418,7 +1670,11 @@ function renderHistoryChart() {
 
   ctx.fillStyle = "#94a3b8";
   ctx.font = "600 10px Manrope, sans-serif";
-  ctx.fillText(currentChartMetric === "wins" ? "VICTORIAS" : "PUNTOS", centerX, centerY + 12);
+  ctx.fillText(
+    currentChartMetric === "wins" ? "VICTORIAS" : "PUNTOS",
+    centerX,
+    centerY + 12
+  );
 }
 
 function renderHistoryList() {
@@ -1429,7 +1685,7 @@ function renderHistoryList() {
   container.innerHTML = "";
 
   if (history.length === 0) {
-    container.innerHTML = `<div class="empty-history-box">No hay partidas registradas aún.<br>Cuando termines una partida se listará aquí.</div>`;
+    container.innerHTML = `<div class="empty-history-box">No hay partidas registradas aún.<br>Cuando juegues una partida se listará aquí.</div>`;
     return;
   }
 
@@ -1437,17 +1693,26 @@ function renderHistoryList() {
     const card = document.createElement("div");
     card.className = "history-match-card";
 
-    const winnersList = Array.isArray(match.winners) ? match.winners : [];
-    const winnersText = winnersList.length > 0 ? winnersList.join(", ") : "Sin ganador";
+    const matchTotalRounds = match.totalRounds || (match.rounds ? match.rounds * 2 : 10);
+    const roundsPlayed = match.gameResults ? match.gameResults.length : 0;
+    const isFinished = match.status === "completed" || roundsPlayed >= matchTotalRounds;
 
-    const pointsMap = match.points || {};
-    const sortedPlayers = Object.keys(pointsMap).sort((a, b) => (pointsMap[b] || 0) - (pointsMap[a] || 0));
+    const winnersList = Array.isArray(match.winners) ? match.winners : [];
+    const winnersText =
+      winnersList.length > 0 ? winnersList.join(", ") : "En juego...";
+
+    const pointsMap = match.playerPoints || match.points || {};
+    const sortedPlayers = Object.keys(pointsMap).sort(
+      (a, b) => (pointsMap[b] || 0) - (pointsMap[a] || 0)
+    );
 
     let playersChipsHtml = "";
     sortedPlayers.forEach((p) => {
-      const isWinner = winnersList.includes(p);
+      const isWinner = isFinished && winnersList.includes(p);
       const pts = pointsMap[p];
-      playersChipsHtml += `<span class="history-player-chip ${isWinner ? "is-winner" : ""}">${isWinner ? "👑 " : ""}${p}: ${pts} pts</span>`;
+      playersChipsHtml += `<span class="history-player-chip ${
+        isWinner ? "is-winner" : ""
+      }">${isWinner ? "👑 " : ""}${p}: ${pts} pts</span>`;
     });
 
     const matchNumber = history.length - index;
@@ -1456,25 +1721,40 @@ function renderHistoryList() {
     card.innerHTML = `
       <div class="history-match-header">
         <div class="history-match-info">
-          <span><b>Partida #${matchNumber}</b> • ${match.date || ""}</span>
-          <span class="history-match-rounds">${match.rounds || "?"} rondas (${match.totalRounds || "?"} manos)</span>
+          <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+            <span><b>Partida #${matchNumber}</b> • ${match.date || ""}</span>
+            <span class="match-status-badge ${isFinished ? "completed" : "in-progress"}">
+              ${isFinished ? "✓ Finalizada" : `⏳ Ronda ${roundsPlayed + 1} de ${matchTotalRounds}`}
+            </span>
+          </div>
+          <span class="history-match-rounds">${match.rounds || "?"} rondas (${matchTotalRounds} manos)</span>
         </div>
-        <button class="delete-match-btn" title="Eliminar partida #${matchNumber}" aria-label="Eliminar partida">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="3 6 5 6 21 6"></polyline>
-            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-            <line x1="10" y1="11" x2="10" y2="17"></line>
-            <line x1="14" y1="11" x2="14" y2="17"></line>
-          </svg>
-        </button>
+        <div class="history-match-actions">
+          ${!isFinished ? `
+            <button class="resume-match-btn" title="Reanudar esta partida">▶ Reanudar</button>
+          ` : ""}
+          <button class="delete-match-btn" title="Eliminar partida #${matchNumber}" aria-label="Eliminar partida">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              <line x1="10" y1="11" x2="10" y2="17"></line>
+              <line x1="14" y1="11" x2="14" y2="17"></line>
+            </svg>
+          </button>
+        </div>
       </div>
       <div class="history-match-winner">
-        <span>🏆 Ganador:</span> <b>${winnersText}</b>
+        <span>${isFinished ? "🏆 Ganador:" : "⚡ Líder:"}</span> <b>${winnersText}</b>
       </div>
       <div class="history-match-players">
         ${playersChipsHtml}
       </div>
     `;
+
+    const resumeBtn = card.querySelector(".resume-match-btn");
+    if (resumeBtn) {
+      resumeBtn.onclick = () => resumeMatchFromHistory(matchId);
+    }
 
     const deleteBtn = card.querySelector(".delete-match-btn");
     if (deleteBtn) {
@@ -1550,6 +1830,7 @@ function clearGameState() {
   secondHalfDealerOffset = 0;
   gameResults = [];
   currentGameSavedToHistory = false;
+  currentGameId = null;
 
   // Limpiar almacenamiento local
   localStorage.removeItem("players");
@@ -1559,6 +1840,7 @@ function clearGameState() {
   localStorage.removeItem("playerPoints");
   localStorage.removeItem("gameActive");
   localStorage.removeItem("currentGameSavedToHistory");
+  localStorage.removeItem("currentGameId");
 
   // Resetear la interfaz
   document.getElementById("selectedPlayers").innerHTML = "";
@@ -1574,6 +1856,8 @@ function clearGameState() {
 
 function restoreSavedGame() {
   try {
+    currentGameId = localStorage.getItem("currentGameId") || ("game_" + Date.now());
+    localStorage.setItem("currentGameId", currentGameId);
     players = JSON.parse(localStorage.getItem("players") || "[]");
     rounds = parseInt(localStorage.getItem("rounds") || "0", 10);
     secondHalfDealerOffset = parseInt(localStorage.getItem("secondHalfDealerOffset") || "0", 10);

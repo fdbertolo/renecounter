@@ -962,6 +962,273 @@ td.round {
   transform: none;
 }
 
+/* Vista de Medallero y Podios */
+.podium-view-container {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 6px 0;
+}
+
+.podium-section-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.podium-section-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  margin: 0 0 2px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.podium-section-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 0 0 14px 0;
+  text-align: center;
+}
+
+/* Podio olímpico Top 3 */
+.olympic-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+  min-height: 155px;
+}
+
+.podium-step {
+  flex: 1;
+  max-width: 105px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+}
+
+.podium-step-avatar {
+  font-size: 1.6rem;
+  margin-bottom: 2px;
+  line-height: 1;
+}
+
+.podium-step-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  margin-bottom: 1px;
+}
+
+.podium-step-score {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.podium-pillar {
+  width: 100%;
+  border-radius: 10px 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 8px;
+  font-weight: 800;
+  font-size: 1.25rem;
+  box-shadow: 0 -4px 15px rgba(0,0,0,0.3);
+}
+
+.podium-step.first .podium-pillar {
+  height: 90px;
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.35) 0%, rgba(245, 158, 11, 0.15) 100%);
+  border: 1px solid #fbbf24;
+  color: #fbbf24;
+}
+
+.podium-step.second .podium-pillar {
+  height: 68px;
+  background: linear-gradient(180deg, rgba(226, 232, 240, 0.25) 0%, rgba(148, 163, 184, 0.1) 100%);
+  border: 1px solid #cbd5e1;
+  color: #e2e8f0;
+}
+
+.podium-step.third .podium-pillar {
+  height: 50px;
+  background: linear-gradient(180deg, rgba(217, 119, 6, 0.25) 0%, rgba(180, 83, 9, 0.1) 100%);
+  border: 1px solid #d97706;
+  color: #f59e0b;
+}
+
+/* Medallero Inverso "Rey Rata" */
+.rat-section-container {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 16px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rat-king-card {
+  width: 100%;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.16) 0%, rgba(217, 119, 6, 0.06) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+}
+
+.rat-king-badge {
+  font-size: 2.2rem;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.rat-king-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  flex: 1;
+}
+
+.rat-king-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #fbbf24;
+  letter-spacing: 0.5px;
+}
+
+.rat-king-name {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1.2;
+  margin: 2px 0;
+}
+
+.rat-king-stats {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fcd34d;
+}
+
+.rat-runners-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  width: 100%;
+}
+
+.rat-runner-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 9px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.rat-runner-badge {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.rat-runner-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.rat-runner-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rat-runner-stats {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Badges de estado de partida y botón reanudar */
+.history-match-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.match-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  width: fit-content;
+}
+
+.match-status-badge.in-progress {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fbbf24;
+}
+
+.match-status-badge.completed {
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: #34d399;
+}
+
+.resume-match-btn {
+  background: var(--btn-bg);
+  color: var(--bg-dark);
+  border: none;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 0;
+  box-shadow: 0 2px 6px rgba(45, 212, 191, 0.3);
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.resume-match-btn:hover {
+  background: var(--btn-hover);
+  transform: translateY(-1px);
+}
+
 .history-match-winner {
   font-size: 0.95rem;
   font-weight: 700;
