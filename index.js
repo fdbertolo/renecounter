@@ -642,7 +642,7 @@ function renderLosersSelectionButtons() {
     const btn = document.createElement("button");
     const pts = playerPoints[player] ?? 0;
     const ptsSign = pts >= 0 ? "+" : "";
-    btn.innerHTML = `${player} <span style="font-size: 11px; opacity: 0.75;">(apostó ${playerBet} · <b>${ptsSign}${pts} pts</b>)</span>`;
+    btn.innerHTML = `${player} <span style="font-size: 11px; opacity: 0.5;">Apostó ${playerBet} <br> Tiene ${ptsSign}${pts}</span>`;
     btn.disabled = isSelected;
     btn.onclick = () => {
       if (!currentRoundLosers.includes(player)) {
